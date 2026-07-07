@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+dist/
+build/
+.venv/
+venv/
+
+# OS
+.DS_Store
+
+# Regenerable analysis outputs
+AppNote/figs/
+AppNote/biology_report.html
+AppNote/data/*.csv          # reconstructed IPD; regenerate via 01_get_kmdata.py / run_csl.py
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.bbl
+*.blg
+*.out
+*.synctex.gz
+*.toc

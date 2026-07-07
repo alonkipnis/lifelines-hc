@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lifelines-hc"
+version = "0.1.0"
+description = "Higher Criticism and related tests for non-proportional hazard deviations — a lifelines extension."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+authors = [
+    {name = "Alon Kipnis"},
+]
+keywords = [
+    "survival analysis",
+    "higher criticism",
+    "non-proportional hazards",
+    "hypothesis testing",
+    "lifelines",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = [
+    "numpy",
+    "pandas",
+    "lifelines",
+    "multiple-hypothesis-testing>=0.1.01",
+    "multiHGtest>=0.0.3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+app = ["streamlit", "matplotlib"]
+
+[project.urls]
+Homepage = "https://github.com/alonkipnis/lifelines-hc"
+Repository = "https://github.com/alonkipnis/lifelines-hc"
+Paper = "https://academic.oup.com/biomet/article/113/1/asaf075/8307530"
+
+[tool.setuptools.packages.find]
+include = ["lifelines_hc*"]

@@ -1,0 +1,381 @@
+% -----------------------------------------------------------------------
+%  Supplementary Data — lifelines-hc Application Note
+%
+%  Compile: pdflatex supplement && bibtex supplement &&
+%           pdflatex supplement && pdflatex supplement
+% -----------------------------------------------------------------------
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{natbib}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\hypersetup{colorlinks=true, linkcolor=blue!60!black, urlcolor=blue!60!black}
+
+\lstset{%
+  language=Python,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue!65!black}\bfseries,
+  commentstyle=\color{gray!70},
+  stringstyle=\color{green!45!black},
+  breaklines=true,
+  frame=tb,
+  framesep=4pt,
+  backgroundcolor=\color{gray!7},
+  xleftmargin=1.2em,
+  xrightmargin=1.2em,
+  aboveskip=0.8em,
+  belowskip=0.5em,
+  showstringspaces=false,
+}
+
+\title{Supplementary Data\\[0.4em]
+  \large\texttt{lifelines-hc}: a Python package for Higher Criticism
+  testing in two-sample survival analysis under non-proportional hazards}
+\author{Alon Kipnis, Ben Galili, Zohar Yakhini}
+\date{}
+
+\newcommand{\sig}{$^{\ast}$}
+
+\begin{document}
+\maketitle
+
+\noindent
+This document accompanies the Application Note
+\textit{\texttt{lifelines-hc}: a Python package for Higher Criticism testing
+in two-sample survival analysis under non-proportional hazards}.
+It provides (i)~the full analysis workflow and scripts used to reproduce
+the case studies, and (ii)~complete per-method test statistics and
+$p$-values for all four datasets analysed in the main text.
+
+% =======================================================================
+\section{Analysis scripts and data}
+% =======================================================================
+
+All scripts live in the \texttt{AppNote/} directory of the
+\texttt{lifelines-hc} repository
+(\url{https://github.com/alonkipnis/lifelines-hc/tree/main/AppNote}).
+They require Python~${\geq}\,3.10$, \texttt{lifelines-hc}, and
+\texttt{lifelines}~${\geq}\,0.29$.
+
+\subsection*{Workflow}
+
+\begin{enumerate}
+  \item \textbf{Download trial IPD.}
+        \texttt{01\_get\_kmdata.py} exports reconstructed individual patient
+        data (IPD) from the \texttt{kmdata} R package
+        \citep{guyot2012} for CheckMate~057 \citep{borghaei2015},
+        COMET-1 \citep{smith2016}, and AZURE
+        \citep{coleman2011,coleman2014}.
+        CSL liver-cirrhosis IPD are downloaded directly from the CRAN
+        \texttt{timereg} package and the SurvSet repository
+        \citep{csl_data,survset2022} (see \texttt{run\_csl.py}).
+  \item \textbf{Run per-dataset analyses.}
+        Each \texttt{run\_*.py} script loads one dataset, calls
+        \texttt{run\_all\_tests()} in \texttt{utils.py}, writes a results
+        CSV to \texttt{results/}, and saves diagnostic figures to
+        \texttt{figs/}.
+  \item \textbf{Build the composite figure.}
+        \texttt{make\_figure.py} assembles Figure~1 of the main text from
+        the four domain scripts.
+\end{enumerate}
+
+\subsection*{Script index}
+
+\begin{table}[h]
+  \centering
+  \caption{Analysis scripts for the four case studies.}
+  \label{tab:scripts}
+  \small
+  \begin{tabular}{@{}llp{6.8cm}@{}}
+    \toprule
+    Script & Dataset & Role \\
+    \midrule
+    \texttt{01\_get\_kmdata.py} & CheckMate~057, COMET-1, AZURE &
+      Download IPD via \texttt{kmdata} (Guyot algorithm). \\
+    \texttt{run\_immuno\_oncology.py} & CheckMate~057 PFS ($n=582$) &
+      Nivolumab vs.\ docetaxel; crossing curves. \\
+    \texttt{run\_comet.py} & COMET-1 OS ($n=1028$) &
+      Cabozantinib vs.\ prednisone; transient early benefit. \\
+    \texttt{run\_azure.py} & AZURE DFS ($n=3359$) &
+      Zoledronic acid vs.\ control; menopause-dependent effect. \\
+    \texttt{run\_csl.py} & CSL OS ($n=446$) &
+      Prednisone vs.\ placebo; public raw IPD, multi-window effect. \\
+    \texttt{utils.py} & --- &
+      Shared \texttt{run\_all\_tests()}, plotting, and table utilities. \\
+    \texttt{make\_figure.py} & All four &
+      Composite Figure~1 panels (A--H). \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection*{Reproduction commands}
+
+\begin{lstlisting}
+cd AppNote
+python 01_get_kmdata.py --trials Checkmate057_1C COMET1_2A AZURE_2A
+python run_immuno_oncology.py
+python run_comet.py
+python run_azure.py
+python run_csl.py          # requires SurvSet or AppNote/data/CSL.csv
+python make_figure.py
+\end{lstlisting}
+
+Each \texttt{run\_*.py} script writes
+\texttt{results/<domain>\_test\_results.csv} containing one row per
+competing method (statistic and permutation- or asymptotic-based
+$p$-value).
+
+% =======================================================================
+\section{Data sources}
+% =======================================================================
+
+Table~\ref{tab:data} lists the original clinical studies, endpoints, and
+how each dataset was obtained.  For CheckMate~057, COMET-1, and AZURE,
+only published Kaplan--Meier curves were available; IPD were
+reverse-engineered with the algorithm of \citet{guyot2012} and distributed
+in the \texttt{kmdata} package (\url{https://github.com/raredd/kmdata}).
+The CSL trial is the only case study with genuinely public raw IPD.
+
+\begin{table}[h]
+  \centering
+  \caption{Original studies and data acquisition for the four case studies.}
+  \label{tab:data}
+  \small
+  \begin{tabular}{@{}p{2.1cm}p{1.2cm}rp{4.6cm}@{}}
+    \toprule
+    Trial & Endpoint & $n$ & Source and acquisition \\
+    \midrule
+    CheckMate~057 &
+      PFS & 582 &
+      \citet{borghaei2015}; IPD reconstructed from published
+      Kaplan--Meier curves via \citet{guyot2012} (\texttt{kmdata}). \\
+    COMET-1 &
+      OS & 1028 &
+      \citet{smith2016}; IPD reconstructed from published
+      Kaplan--Meier curves via \citet{guyot2012} (\texttt{kmdata}). \\
+    AZURE &
+      DFS & 3359 &
+      \citet{coleman2011,coleman2014}; IPD reconstructed from published
+      Kaplan--Meier curves via \citet{guyot2012} (\texttt{kmdata}). \\
+    CSL &
+      OS & 446 &
+      Copenhagen liver-cirrhosis trial (1962--1969); raw IPD from the CRAN
+      \texttt{timereg} package \citep{csl_data} and SurvSet
+      \citep{survset2022}. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\noindent
+Reconstructed IPD files are written to \texttt{AppNote/data/} as
+\texttt{Checkmate057\_1C.csv}, \texttt{COMET1\_2A.csv}, and
+\texttt{AZURE\_2A.csv} by \texttt{01\_get\_kmdata.py}.
+CSL data are written to \texttt{AppNote/data/CSL.csv} by
+\texttt{run\_csl.py}.
+
+% =======================================================================
+\section{Shared analysis settings}
+% =======================================================================
+
+Unless noted otherwise, all HC-based tests (HCHG, Fisher combination,
+MinP) use:
+\begin{itemize}
+  \item equal-width time pooling with \texttt{n\_intervals\_to\_pool}
+        as listed per dataset below;
+  \item two-sided interval hypergeometric $p$-values
+        (\texttt{alternative='both'});
+  \item HC fraction $\gamma = 0.2$;
+  \item label-permutation $p$-values with the random seed fixed at 42.
+\end{itemize}
+
+The log-rank test and four weighted log-rank variants (Gehan-Wilcoxon,
+Tarone-Ware, Peto-Prentice, Fleming-Harrington with $p=q=1$) use the
+standard \texttt{lifelines.statistics.logrank\_test} implementation with
+asymptotic $p$-values.
+
+% =======================================================================
+\section{Per-method results tables}
+% =======================================================================
+
+Tables~\ref{tab:checkmate}--\ref{tab:csl} report the full comparison
+for each dataset.  Asterisks mark $p < 0.05$.
+Permutation-based $p$-values for HCHG, Fisher, and MinP are discrete
+(multiples of $1/(n_\mathrm{perms}+1)$ with $n_\mathrm{perms}=2000$) and
+are rounded to three decimals; ``$<0.001$'' denotes the smallest
+attainable value, $1/2001$.
+
+% -----------------------------------------------------------------------
+\subsection*{CheckMate~057 --- progression-free survival ($n=582$)}
+
+Original trial: \citet{borghaei2015}.
+IPD reconstructed from published Kaplan--Meier curves
+\citep{guyot2012}.
+Control: docetaxel ($n=290$); treatment: nivolumab ($n=292$).
+HC settings: $K=60$ intervals, $n_\mathrm{perms}=2000$.
+
+\begin{table}[h]
+  \centering
+  \caption{CheckMate~057 PFS: all competing methods.}
+  \label{tab:checkmate}
+  \begin{tabular}{@{}lrr@{}}
+    \toprule
+    Method & Statistic & $p$-value \\
+    \midrule
+    Log-rank                         &  0.868 & 0.351 \\
+    Gehan-Wilcoxon                   &  4.169 & 0.041\sig \\
+    Tarone-Ware                      &  0.844 & 0.358 \\
+    Peto-Prentice                    &  3.869 & 0.049\sig \\
+    Fleming-Harrington (1,1)         &  1.292 & 0.256 \\
+    Higher Criticism (HC)            &  1.695 & 0.001\sig \\
+    Fisher combination               & 112.561 & $<0.001$\sig \\
+    MinP (Bonferroni)                &  7.112 & 0.007\sig \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% -----------------------------------------------------------------------
+\subsection*{COMET-1 --- overall survival ($n=1028$)}
+
+Original trial: \citet{smith2016}.
+IPD reconstructed from published Kaplan--Meier curves
+\citep{guyot2012}.
+Control: prednisone ($n=346$); treatment: cabozantinib ($n=682$).
+HC settings: $K=80$ intervals, $n_\mathrm{perms}=2000$.
+
+\begin{table}[h]
+  \centering
+  \caption{COMET-1 OS: all competing methods.}
+  \label{tab:comet}
+  \begin{tabular}{@{}lrr@{}}
+    \toprule
+    Method & Statistic & $p$-value \\
+    \midrule
+    Log-rank                         &  1.259 & 0.262 \\
+    Gehan-Wilcoxon                   &  1.693 & 0.193 \\
+    Tarone-Ware                      &  1.570 & 0.210 \\
+    Peto-Prentice                    &  1.602 & 0.206 \\
+    Fleming-Harrington (1,1)         &  0.648 & 0.421 \\
+    Higher Criticism (HC)            &  1.179 & 0.014\sig \\
+    Fisher combination               & 128.932 & 0.028\sig \\
+    MinP (Bonferroni)                &  4.858 & 0.242 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% -----------------------------------------------------------------------
+\subsection*{AZURE --- disease-free survival ($n=3359$)}
+
+Original trial: \citet{coleman2011,coleman2014}.
+IPD reconstructed from published Kaplan--Meier curves
+\citep{guyot2012}.
+Control: standard adjuvant therapy ($n=1678$); treatment: zoledronic acid
+($n=1681$).  HC settings: $K=80$ intervals, $n_\mathrm{perms}=2000$.
+
+\begin{table}[h]
+  \centering
+  \caption{AZURE DFS: all competing methods.}
+  \label{tab:azure}
+  \begin{tabular}{@{}lrr@{}}
+    \toprule
+    Method & Statistic & $p$-value \\
+    \midrule
+    Log-rank                         &  1.054 & 0.305 \\
+    Gehan-Wilcoxon                   &  0.652 & 0.419 \\
+    Tarone-Ware                      &  0.691 & 0.406 \\
+    Peto-Prentice                    &  1.145 & 0.284 \\
+    Fleming-Harrington (1,1)         &  0.277 & 0.598 \\
+    Higher Criticism (HC)            &  1.513 & 0.005\sig \\
+    Fisher combination               & 157.060 & 0.004\sig \\
+    MinP (Bonferroni)                &  9.168 & 0.002\sig \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% -----------------------------------------------------------------------
+\subsection*{CSL --- overall survival ($n=446$)}
+
+Original trial: Copenhagen Study group for Liver diseases (1962--1969);
+public IPD distributed via \citet{csl_data} and \citet{survset2022}.
+Control: placebo ($n=220$); treatment: prednisone ($n=226$).
+Follow-up times are in years.  HC settings: $K=50$ intervals,
+$n_\mathrm{perms}=2000$.
+
+\begin{table}[h]
+  \centering
+  \caption{CSL liver-cirrhosis OS: all competing methods.}
+  \label{tab:csl}
+  \begin{tabular}{@{}lrr@{}}
+    \toprule
+    Method & Statistic & $p$-value \\
+    \midrule
+    Log-rank                         &  0.757 & 0.384 \\
+    Gehan-Wilcoxon                   &  0.439 & 0.507 \\
+    Tarone-Ware                      &  0.774 & 0.379 \\
+    Peto-Prentice                    &  0.574 & 0.449 \\
+    Fleming-Harrington (1,1)         &  2.234 & 0.135 \\
+    Higher Criticism (HC)            &  1.257 & 0.002\sig \\
+    Fisher combination               &  77.413 & 0.034\sig \\
+    MinP (Bonferroni)                &  5.291 & 0.057 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% =======================================================================
+\section{Cross-dataset summary}
+% =======================================================================
+
+Table~\ref{tab:summary} condenses the log-rank and HCHG $p$-values
+reported in the main text.  Full statistics for all eight methods appear
+in Section~4.
+
+\begin{table}[h]
+  \centering
+  \caption{Summary of log-rank and HCHG $p$-values across the four
+           case studies (full tables in Section~4).}
+  \label{tab:summary}
+  \small
+  \begin{tabular}{@{}llrrr@{}}
+    \toprule
+    Dataset & Endpoint & $n$ & Log-rank $p$ & HCHG $p$ \\
+    \midrule
+    CheckMate~057  & PFS &  582 & 0.351 & 0.001 \\
+    COMET-1        & OS  & 1028 & 0.262 & 0.014 \\
+    AZURE          & DFS & 3359 & 0.305 & 0.005 \\
+    CSL            & OS  &  446 & 0.384 & 0.002 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\noindent
+Across all four datasets, HCHG achieves $p \leq 0.014$ while the log-rank
+test is non-significant throughout ($p \geq 0.26$). Among the weighted
+log-rank alternatives, only CheckMate~057 Gehan-Wilcoxon and Peto-Prentice
+reach $p < 0.05$ (at 0.041 and 0.049 respectively); every other weighted
+test returns $p \geq 0.13$.
+
+% =======================================================================
+\section{Machine-readable results}
+% =======================================================================
+
+The CSV files below contain the same values as Tables~\ref{tab:checkmate}--\ref{tab:csl}
+(columns \texttt{method}, \texttt{statistic}, \texttt{p\_value}):
+
+\begin{itemize}
+  \item \texttt{AppNote/results/immuno\_test\_results.csv}
+  \item \texttt{AppNote/results/comet\_test\_results.csv}
+  \item \texttt{AppNote/results/azure\_test\_results.csv}
+  \item \texttt{AppNote/results/csl\_test\_results.csv}
+\end{itemize}
+
+% =======================================================================
+%  Bibliography
+% =======================================================================
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}

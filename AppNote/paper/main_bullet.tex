@@ -1,0 +1,547 @@
+% -----------------------------------------------------------------------
+%  lifelines-hc Application Note — Bioinformatics journal
+%  BULLET-POINT OUTLINE VERSION  (for review / author editing)
+%
+%  Identical structure and front matter to main.tex.
+%  All narrative paragraphs replaced with bullet-point lists.
+%  Equations, code listing, figure, and bibliography unchanged.
+% -----------------------------------------------------------------------
+\documentclass[unnumsec,webpdf,contemporary,large]{oup-authoring-template}
+
+% ---- packages ----
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{xcolor}
+% tighter itemize spacing without enumitem (which conflicts with OUP class)
+\newlength{\savedtopsep}
+\let\origitemize\itemize
+\let\origenditemize\enditemize
+\renewenvironment{itemize}{%
+  \origitemize
+  \setlength{\itemsep}{1pt}%
+  \setlength{\parskip}{0pt}%
+  \setlength{\topsep}{3pt}%
+}{\origenditemize}
+
+\lstset{%
+  language=Python,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue!65!black}\bfseries,
+  commentstyle=\color{gray!70},
+  stringstyle=\color{green!45!black},
+  breaklines=true,
+  frame=tb,
+  framesep=4pt,
+  backgroundcolor=\color{gray!7},
+  xleftmargin=1.2em,
+  xrightmargin=1.2em,
+  aboveskip=0.8em,
+  belowskip=0.5em,
+  showstringspaces=false,
+}
+
+\graphicspath{{../figs/}}
+
+% -----------------------------------------------------------------------
+\begin{document}
+
+\journaltitle{Bioinformatics}
+\DOI{DOI HERE}
+\copyrightyear{2025}
+\pubyear{2025}
+\access{Advance Access Publication Date: Day Month Year}
+\appnotes{Application Note}
+
+\firstpage{1}
+
+% ---- title ----
+\title[{\texttt{lifelines-hc}}: Higher Criticism survival testing]%
+      {{\texttt{lifelines-hc}}: a Python package for HCHG testing
+       in two-sample survival analysis}
+
+% ---- authors ----
+\author[1,$\ast$]{Alon Kipnis}
+\author[2]{Zohar Yakhini}
+
+\authormark{Kipnis and Yakhini}
+
+\address[1]{%
+  \orgdiv{School of Computer Science},
+  \orgname{Reichman University},
+  \orgaddress{%
+    \street{Herzliya},
+    \postcode{4610101},
+    \country{Israel}%
+  }%
+}
+
+\corresp[$\ast$]{%
+  E-mail: \href{mailto:alon.kipnis@runi.ac.il}{alon.kipnis@runi.ac.il}%
+}
+
+\received{}{0}{}
+\revised{}{0}{}
+\accepted{}{0}{}
+
+% ---- structured abstract ----
+\abstract{%
+\textbf{Motivation:}
+\begin{itemize}
+  \item Log-rank has good power against many alternatives, but
+        \citet{kipnis_biometrika} showed it is \emph{not} optimal
+        against sparse hazard departures — concentrated differences
+        in a few intervals at \emph{unknown} locations.
+  \item Weighted log-rank alternatives (Gehan-Wilcoxon, Tarone-Ware,
+        Peto-Prentice, Fleming-Harrington) each pre-specify a temporal
+        emphasis and are insensitive to sparse departures outside that
+        window.
+\end{itemize}
+\textbf{Results:}
+\begin{itemize}
+  \item \texttt{lifelines-hc}: Python package extending \texttt{lifelines}
+        with the HCHG test (HC statistic applied to per-interval
+        hypergeometric p-values; \citealt{kipnis_biometrika}).
+  \item HCHG detects sparse hazard departures at unknown locations with
+        no pre-committed temporal weight.
+  \item Four real clinical datasets: CheckMate~057 PFS ($n=582$),
+        COMET-1 OS ($n=1028$), AZURE DFS ($n=3359$), and the CSL
+        liver-cirrhosis trial ($n=446$) — the last with fully public
+        individual patient data.
+  \item HCHG: $p \leq 0.014$ in all four. Log-rank non-significant
+        throughout ($p \geq 0.26$); among the weighted tests only
+        Gehan-Wilcoxon and Peto-Prentice on CheckMate~057 reach $p<0.05$.
+\end{itemize}
+\textbf{Availability and Implementation:}
+\begin{itemize}
+  \item \url{https://github.com/alonkipnis/lifelines-hc}; MIT licence.
+  \item \texttt{pip install lifelines-hc};
+        requires Python~${\geq}\,3.8$, \texttt{lifelines}~${\geq}\,0.29$.
+  \item Full analysis scripts and per-method results tables in
+        Supplementary Data.
+\end{itemize}%
+}
+
+\keywords{survival analysis; higher criticism; sparse signal detection;
+  hypergeometric test; hypothesis testing; Python}
+
+\maketitle
+
+
+% =======================================================================
+\section{Introduction}
+% =======================================================================
+
+\textbf{Background: log-rank and its limitation}
+\begin{itemize}
+  \item Kaplan-Meier \citep{kaplan1958} and log-rank \citep{mantel1966}
+        are the standard tools for two-sample survival comparison.
+  \item \citet{schoenfeld1981}: log-rank is asymptotically optimal
+        against proportional-hazards (PH) alternatives.
+  \item \citet{kipnis_biometrika}: log-rank is \emph{not} optimal
+        against \textbf{sparse} hazard departures — hazard differences
+        confined to a small, \emph{unknown} subset of time intervals.
+\end{itemize}
+
+\textbf{Motivating biological examples of sparse departures}
+\begin{itemize}
+  \item \textit{Crossing curves (immuno-oncology):} PD-1 inhibitors
+        require an immune-priming phase; hazard excess is confined to
+        early and late phases. CheckMate~057 (nivolumab vs docetaxel,
+        NSCLC) \citep{borghaei2015}.
+  \item \textit{Transient early benefit (targeted therapy):} Cabozantinib
+        (MET/VEGFR2 inhibitor) improved bone scan response at week~12 in
+        COMET-1 (mCRPC) but the OS advantage was confined to the
+        bone-response phase \citep{smith2016}.
+  \item \textit{Subgroup-dependent accumulated benefit (pharmacology):}
+        Zoledronic acid's bone-microenvironment benefit is
+        menopause-dependent; hazard difference accumulates only after
+        premenopausal patients transition to postmenopause.
+        AZURE trial \citep{coleman2011}.
+  \item \textit{Time-varying treatment effect (hepatology):} Prednisone
+        in liver cirrhosis is harmful early (infection / fluid retention)
+        but anti-inflammatory later; the survival curves cross more than
+        once, with the effect concentrated in a few non-contiguous windows.
+        CSL trial \citep{csl_data} --- a canonical non-PH dataset with
+        \emph{fully public} individual patient data.
+\end{itemize}
+
+\textbf{Existing non-PH alternatives and their limitation}
+\begin{itemize}
+  \item Weighted log-rank family: Gehan-Wilcoxon \citep{gehan1965},
+        Peto-Prentice \citep{peto1972}, Tarone-Ware \citep{taroneware1977},
+        Fleming-Harrington \citep{flemingharrington1991}.
+  \item Each applies a fixed temporal weight (early / mid / late emphasis).
+  \item Requires knowing \emph{a priori} where the hazard departure will
+        occur — not suitable for the unknown-location sparse setting.
+  \item All four can simultaneously miss a sparse departure if its location
+        falls outside the intended window (demonstrated below).
+\end{itemize}
+
+\textbf{The HCHG test and the present work}
+\begin{itemize}
+  \item \citet{kipnis_biometrika} proposed HCHG: the HC statistic of
+        \citet{donoho2004} applied to per-interval HyperGeometric (HG)
+        p-values from survival data.
+  \item Designed specifically for sparse departures at unknown locations;
+        no pre-specified temporal weight.
+  \item No accessible Python implementation existed.
+  \item \textbf{This paper:} \texttt{lifelines-hc} extends
+        \texttt{lifelines} \citep{davidsonpilon2019} with HCHG and
+        supporting diagnostics.
+\end{itemize}
+
+
+% =======================================================================
+\section{The \texttt{lifelines-hc} package}
+% =======================================================================
+
+\subsection*{The HCHG statistic}
+
+\textbf{Step 1 — Hypergeometric interval p-values}
+\begin{itemize}
+  \item Partition follow-up into $K$ equal-width intervals.
+  \item Interval $k$: $n_k$ total events, $r_k^A$/$r_k^B$ at risk,
+        $x_k$ events in group B.
+  \item Under the null of equal group-specific hazards:
+\end{itemize}
+%
+\begin{equation}\label{eq:hypergeom}
+  x_k \;\Big|\; n_k,\, r_k^A,\, r_k^B
+  \;\sim\;
+  \mathrm{Hypergeometric}\!\left(r_k^A + r_k^B,\; r_k^B,\; n_k\right),
+\end{equation}
+%
+yielding a one-sided p-value $p_k$ per interval.
+
+\textbf{Step 2 — HC aggregation (\citealt{donoho2004})}
+\begin{itemize}
+  \item Order: $p_{(1)} \leq p_{(2)} \leq \cdots \leq p_{(K)}$.
+  \item Apply the HC statistic to the ordered p-values:
+\end{itemize}
+%
+\begin{equation}\label{eq:hc}
+  \mathrm{HCHG}_K
+  \;=\;
+  \max_{1 \leq j \leq \lfloor\gamma K\rfloor}
+  \frac{j/K - p_{(j)}}{\sqrt{p_{(j)}\!\left(1 - p_{(j)}\right)/K}},
+\end{equation}
+%
+\begin{itemize}
+  \item $\gamma \in (0,1)$, default $0.2$: restricts scanning to the
+        most extreme fraction of p-values \citep{donoho2004}.
+  \item Global p-value: label permutation ($n_\mathrm{perms}=2000$
+        in the analyses reported here).
+  \item Two-sided: use $\min$ of two one-sided $p_k$ in place of $p_k$.
+\end{itemize}
+
+
+\subsection*{Software design and API}
+
+\textbf{Main functions}
+\begin{itemize}
+  \item \texttt{higher\_criticism\_test()} — HCHG test; returns
+        \texttt{StatisticalResult} with \texttt{p\_value} and
+        \texttt{test\_statistic}.
+  \item \texttt{fisher\_combination\_test()} — Fisher combination
+        ($-2\sum_k \log p_k$) \citep{fisher1932}.
+  \item \texttt{min\_p\_test()} — Bonferroni-corrected MinP test.
+  \item \texttt{suspected\_deviations()} — per-interval HG p-values
+        with \texttt{suspected} boolean column (HCHG-flagged intervals);
+        used for diagnostic KM shading.
+  \item \texttt{run\_all\_tests()} — benchmarks HCHG, Fisher, MinP,
+        log-rank, and four weighted alternatives; returns
+        \texttt{pandas.DataFrame}.
+  \item Plotting: \texttt{plot\_km\_with\_hc()},
+        \texttt{plot\_pvalue\_profile()}.
+\end{itemize}
+
+\textbf{Usage example}
+\begin{lstlisting}
+from lifelines_hc import (higher_criticism_test,
+                           fisher_combination_test,
+                           min_p_test,
+                           suspected_deviations)
+
+result = higher_criticism_test(
+    T_A, T_B,
+    event_observed_A=E_A, event_observed_B=E_B,
+    n_intervals_to_pool=100, n_permutations=2000,
+    alternative='both', gamma=0.2, seed=42)
+
+print(result.p_value)       # permutation-calibrated p-value
+print(result.test_statistic)  # HCHG statistic value
+\end{lstlisting}
+
+\textbf{Design notes}
+\begin{itemize}
+  \item API consistent with \texttt{lifelines.statistics}.
+  \item All three omnibus tests share the same HG interval p-values and
+        permutation infrastructure.
+\end{itemize}
+
+
+% =======================================================================
+\section{Results}
+% =======================================================================
+
+\textbf{Overview}
+\begin{itemize}
+  \item Four real clinical datasets with distinct sparse non-PH patterns
+        (Figure~\ref{fig:main}). Top row (A--D): KM curves;
+        bottom row (E--H): per-interval $p$-value profiles.
+  \item Benchmark: HCHG vs log-rank vs four weighted alternatives.
+  \item Three datasets use IPD reconstructed from published KM curves;
+        the CSL trial (Domain 4) has \emph{fully public} raw IPD.
+  \item Full per-method p-value tables in Supplementary Data.
+\end{itemize}
+
+\subsection*{Domain 1 — Immuno-oncology: crossing survival curves}
+
+\textbf{Trial and data}
+\begin{itemize}
+  \item CheckMate~057 \citep{borghaei2015}: nivolumab ($n=292$) vs
+        docetaxel ($n=290$), 2nd-line advanced non-squamous NSCLC.
+  \item Endpoint: progression-free survival (PFS).
+  \item IPD reconstructed via \citet{guyot2012} / \texttt{kmdata}.
+\end{itemize}
+
+\textbf{Survival pattern}
+\begin{itemize}
+  \item Curves \emph{cross}: docetaxel has an early advantage (immune
+        priming), then nivolumab gains a durable late benefit.
+  \item Sparse departure: elevated hazard for nivolumab confined to the
+        early crossing window; then a late hazard reversal.
+\end{itemize}
+
+\textbf{Test results}
+\begin{itemize}
+  \item Log-rank: $p = 0.351$ (NS) — early excess and late benefit cancel.
+  \item Gehan-Wilcoxon: $p = 0.041$; Peto-Prentice: $p = 0.049$
+        (borderline) — their early emphasis happens to align with the
+        crossing; not a general signal.
+  \item Tarone-Ware: $p = 0.358$; Fleming-Harrington\,(1,1): $p = 0.256$
+        (both NS).
+  \item HCHG: $p = 0.001$ — flags both the early and late divergence
+        windows independently (Figure~\ref{fig:main}A,E).
+\end{itemize}
+
+
+\subsection*{Domain 2 — Targeted therapy: transient early benefit}
+
+\textbf{Trial and data}
+\begin{itemize}
+  \item COMET-1 \citep{smith2016}: cabozantinib ($n=682$) vs prednisone
+        ($n=346$), chemotherapy-pretreated mCRPC. 2:1 randomisation.
+  \item Endpoint: overall survival (OS). Median OS $\approx 10$ months.
+  \item IPD reconstructed via \citet{guyot2012} / \texttt{kmdata}.
+\end{itemize}
+
+\textbf{Biological mechanism and survival pattern}
+\begin{itemize}
+  \item Cabozantinib inhibits MET and VEGFR2: reduces bone lesion
+        activity (bone scan response at week~12 significantly improved).
+  \item Resistance through alternative pathways develops rapidly;
+        benefit is confined to the bone-response phase (months 3--7).
+  \item Sparse departure: early OS advantage, then curves converge.
+\end{itemize}
+
+\textbf{Test results}
+\begin{itemize}
+  \item Log-rank: $p = 0.262$ (NS).
+  \item All four weighted alternatives: $p \geq 0.19$ (NS) — early-weighted
+        tests (GW, PP) partially align but are diluted by the post-response
+        null period.
+  \item HCHG: $p = 0.014$; Fisher combination: $p = 0.028$
+        (Figure~\ref{fig:main}B,F).
+\end{itemize}
+
+
+\subsection*{Domain 3 — Adjuvant bisphosphonate: menopause-dependent effect}
+
+\textbf{Trial and data}
+\begin{itemize}
+  \item AZURE \citep{coleman2011,coleman2014}: zoledronic acid ($n=1681$)
+        vs control ($n=1678$), early-stage breast cancer. 10-year follow-up.
+  \item Endpoint: disease-free survival (DFS). 973 events total.
+  \item IPD reconstructed via \citet{guyot2012} / \texttt{kmdata}.
+\end{itemize}
+
+\textbf{Biological mechanism and survival pattern}
+\begin{itemize}
+  \item Zoledronic acid targets the bone microenvironment (osteoclast
+        inhibition), preventing micrometastasis in the bone niche.
+  \item Benefit is menopause-dependent: requires low oestrogen /
+        high bone resorption (postmenopausal state).
+  \item Many patients were premenopausal at enrolment; benefit accumulates
+        only after their transition to postmenopause (months 20--60).
+  \item Sparse departure: hazard difference distributed across a
+        mid-to-late window, null outside it.
+\end{itemize}
+
+\textbf{Test results}
+\begin{itemize}
+  \item Log-rank: $p = 0.305$ (NS).
+  \item All four weighted alternatives: $p \geq 0.28$ (NS) — no fixed
+        weight captures the mid-to-late window unaffected by the null
+        early period.
+  \item HCHG: $p = 0.005$; Fisher: $p = 0.004$
+        (Figure~\ref{fig:main}C,G).
+  \item Validated by published subgroup analyses: significant DFS benefit
+        in postmenopausal patients \citep{coleman2011,coleman2014}.
+\end{itemize}
+
+
+\subsection*{Domain 4 — Corticosteroid in cirrhosis: time-varying effect
+  (public IPD)}
+
+\textbf{Trial and data}
+\begin{itemize}
+  \item CSL trial \citep{csl_data}: prednisone ($n=226$) vs placebo
+        ($n=220$), histologically verified liver cirrhosis
+        (Copenhagen, 1962--69). 270 deaths.
+  \item Endpoint: overall survival. Follow-up up to $\sim$13 years.
+  \item \textbf{Raw IPD genuinely public} --- distributed in the CRAN
+        \texttt{timereg} package and the open SurvSet repository
+        \citep{survset2022}; \emph{not} reconstructed from a KM curve.
+  \item Note: source CSV is counting-process (long) format with a
+        time-varying prothrombin covariate; collapsed to one row per
+        patient (final follow-up time and status) for the two-sample test.
+\end{itemize}
+
+\textbf{Biological mechanism and survival pattern}
+\begin{itemize}
+  \item Corticosteroids have a time-varying effect in cirrhosis: early
+        harm (immunosuppression, infection, fluid retention) followed by
+        later anti-inflammatory benefit in actively inflamed subgroups.
+  \item Survival curves cross more than once; treatment effect concentrated
+        in a few non-contiguous windows (sign-changing).
+  \item Canonical non-PH dataset, widely used to illustrate
+        time-varying-coefficient models.
+\end{itemize}
+
+\textbf{Test results}
+\begin{itemize}
+  \item Log-rank: $p = 0.384$ (NS).
+  \item All four weighted alternatives: $p \geq 0.13$ (NS) —
+        Gehan-Wilcoxon $0.51$, Tarone-Ware $0.38$, Peto-Prentice $0.45$,
+        Fleming-Harrington\,(1,1) $0.14$.
+  \item HCHG: $p = 0.002$ (significant); Fisher: $p = 0.034$
+        (Figure~\ref{fig:main}D,H).
+  \item Demonstrates HCHG on genuinely public raw data, with a multi-window
+        sign-changing departure no single weight can capture.
+\end{itemize}
+
+
+\textbf{Cross-domain summary}
+\begin{itemize}
+  \item HCHG achieves $p \leq 0.014$ in all four domains; log-rank is
+        non-significant throughout ($p \geq 0.26$).
+  \item GW ($p=0.041$) and PP ($p=0.049$) reach $p<0.05$ in CheckMate~057
+        only — the sole weighted results below $0.05$; elsewhere all
+        weighted tests $p \geq 0.13$. Their early emphasis coincidentally
+        aligns with that trial's crossing signal and does not generalise.
+  \item Fisher combination also significant in all four, consistent
+        with sparse localised signals. MinP significant in CheckMate~057
+        and AZURE.
+  \item The four patterns differ (early+late crossing, transient-early,
+        mid-to-late accumulated, multi-window sign-changing), yet HCHG
+        detects all without any per-dataset tuning.
+\end{itemize}
+
+
+% =======================================================================
+\section{Conclusion}
+% =======================================================================
+
+\begin{itemize}
+  \item \texttt{lifelines-hc} provides a Python implementation of HCHG,
+        the test specifically designed for sparse hazard departures at
+        unknown temporal locations.
+  \item Unlike weighted log-rank tests, HCHG requires no a priori
+        specification of where the hazard departure occurs.
+  \item Diagnostic output (\texttt{suspected\_deviations()}) identifies
+        which time windows drive the signal.
+  \item Fisher combination and MinP provided as complementary omnibus
+        alternatives sharing the same hypergeometric infrastructure.
+  \item Practical complement to standard survival testing whenever the
+        proportional-hazards assumption is uncertain.
+\end{itemize}
+
+
+% =======================================================================
+%  Back matter
+% =======================================================================
+
+\section*{Acknowledgements}
+TODO.
+
+\section*{Conflict of Interest}
+None declared.
+
+\section*{Funding}
+TODO.
+
+\section*{Data availability}
+\begin{itemize}
+  \item IPD for CheckMate~057, COMET-1, and AZURE reconstructed from
+        published KM curves via \citet{guyot2012} as implemented in the
+        \texttt{kmdata} R package (\url{https://github.com/raredd/kmdata}).
+  \item CSL liver-cirrhosis IPD is fully public: CRAN \texttt{timereg}
+        package (dataset \texttt{csl}) and the SurvSet repository
+        \citep{survset2022} (\url{https://github.com/ErikinBC/SurvSet}).
+  \item All analysis code:
+        \url{https://github.com/alonkipnis/lifelines-hc/tree/main/AppNote}.
+\end{itemize}
+
+
+% =======================================================================
+%  Figure  (4-domain version; adds CSL relative to main.tex)
+% =======================================================================
+
+\begin{figure*}[t!]
+  \centering
+  \includegraphics[width=\textwidth]{figure1_4dom}
+  \caption{%
+    \textbf{HCHG detects non-proportional hazard departures
+    across four clinical datasets with distinct temporal patterns.}
+    Top row (A--D): Kaplan-Meier curves with HCHG-flagged intervals
+    (shaded). Bottom row (E--H): per-interval \emph{signed}
+    $-\!\log_{10}$(hypergeometric p-value) --- upward bars mark excess
+    events in the treatment arm, downward bars excess in the control arm.
+    Dashed lines are the per-direction HCHG thresholds; bars reaching
+    beyond either line are highlighted in red and coincide exactly with
+    the intervals shaded above.
+    %
+    \textbf{(A,E)}~CheckMate~057 PFS (nivolumab vs.\ docetaxel, $n=582$);
+    log-rank $p=0.351$, HCHG $p=0.001$. Curves cross at $\sim\!3$ months
+    before nivolumab gains a durable late advantage.
+    %
+    \textbf{(B,F)}~COMET-1 OS (cabozantinib vs.\ prednisone, $n=1028$);
+    log-rank $p=0.262$, HCHG $p=0.014$. Early OS advantage (months~3--7)
+    during bone-lesion response, fading as resistance develops.
+    %
+    \textbf{(C,G)}~AZURE DFS (zoledronic acid vs.\ control, $n=3359$);
+    log-rank $p=0.305$, HCHG $p=0.005$. Menopause-dependent benefit
+    accumulates in months~20--60.
+    %
+    \textbf{(D,H)}~CSL OS (prednisone vs.\ placebo, liver cirrhosis,
+    $n=446$); log-rank $p=0.384$, HCHG $p=0.002$. Time-varying
+    corticosteroid effect with multiple curve crossings; \emph{fully
+    public} raw IPD (CRAN \texttt{timereg} / SurvSet).
+    In every dataset the log-rank test is non-significant while HCHG is
+    significant. For the first three, IPD reconstructed
+    via \citet{guyot2012}.%
+  }
+  \label{fig:main}
+\end{figure*}
+
+
+% =======================================================================
+%  Bibliography  (unchanged from main.tex)
+% =======================================================================
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}
