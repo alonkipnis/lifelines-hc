@@ -39,7 +39,7 @@ def load_csv(uploaded_file):
 @st.cache_data(show_spinner=False)
 def load_sample():
     import os
-    path = os.path.join(os.path.dirname(__file__), "..", SAMPLE_CSV)
+    path = os.path.join(os.path.dirname(__file__), SAMPLE_CSV)
     if os.path.exists(path):
         return pd.read_csv(path)
     return None
