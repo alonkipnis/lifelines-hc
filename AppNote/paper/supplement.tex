@@ -59,7 +59,7 @@ $p$-values for all four datasets analysed in the main text.
 All scripts live in the \texttt{AppNote/} directory of the
 \texttt{lifelines-hc} repository
 (\url{https://github.com/alonkipnis/lifelines-hc/tree/main/AppNote}).
-They require Python~${\geq}\,3.10$, \texttt{lifelines-hc}, and
+They require Python~${\geq}\,3.8$, \texttt{lifelines-hc}, and
 \texttt{lifelines}~${\geq}\,0.29$.
 
 \subsection*{Workflow}
@@ -182,8 +182,7 @@ CSL data are written to \texttt{AppNote/data/CSL.csv} by
 \section{Shared analysis settings}
 % =======================================================================
 
-Unless noted otherwise, all HC-based tests (HCHG, Fisher combination,
-MinP) use:
+Unless noted otherwise, HCHG uses:
 \begin{itemize}
   \item equal-width time pooling with \texttt{n\_intervals\_to\_pool}
         as listed per dataset below;
@@ -204,7 +203,7 @@ asymptotic $p$-values.
 
 Tables~\ref{tab:checkmate}--\ref{tab:csl} report the full comparison
 for each dataset.  Asterisks mark $p < 0.05$.
-Permutation-based $p$-values for HCHG, Fisher, and MinP are discrete
+Permutation-based $p$-values for HCHG are discrete
 (multiples of $1/(n_\mathrm{perms}+1)$ with $n_\mathrm{perms}=2000$) and
 are rounded to three decimals; ``$<0.001$'' denotes the smallest
 attainable value, $1/2001$.
@@ -231,9 +230,7 @@ HC settings: $K=60$ intervals, $n_\mathrm{perms}=2000$.
     Tarone-Ware                      &  0.844 & 0.358 \\
     Peto-Prentice                    &  3.869 & 0.049\sig \\
     Fleming-Harrington (1,1)         &  1.292 & 0.256 \\
-    Higher Criticism (HC)            &  1.695 & 0.001\sig \\
-    Fisher combination               & 112.561 & $<0.001$\sig \\
-    MinP (Bonferroni)                &  7.112 & 0.007\sig \\
+    HCHG                             &  1.695 & 0.001\sig \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -260,9 +257,7 @@ HC settings: $K=80$ intervals, $n_\mathrm{perms}=2000$.
     Tarone-Ware                      &  1.570 & 0.210 \\
     Peto-Prentice                    &  1.602 & 0.206 \\
     Fleming-Harrington (1,1)         &  0.648 & 0.421 \\
-    Higher Criticism (HC)            &  1.179 & 0.014\sig \\
-    Fisher combination               & 128.932 & 0.028\sig \\
-    MinP (Bonferroni)                &  4.858 & 0.242 \\
+    HCHG                             &  1.179 & 0.014\sig \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -289,9 +284,7 @@ Control: standard adjuvant therapy ($n=1678$); treatment: zoledronic acid
     Tarone-Ware                      &  0.691 & 0.406 \\
     Peto-Prentice                    &  1.145 & 0.284 \\
     Fleming-Harrington (1,1)         &  0.277 & 0.598 \\
-    Higher Criticism (HC)            &  1.513 & 0.005\sig \\
-    Fisher combination               & 157.060 & 0.004\sig \\
-    MinP (Bonferroni)                &  9.168 & 0.002\sig \\
+    HCHG                             &  1.513 & 0.005\sig \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -299,7 +292,7 @@ Control: standard adjuvant therapy ($n=1678$); treatment: zoledronic acid
 % -----------------------------------------------------------------------
 \subsection*{CSL --- overall survival ($n=446$)}
 
-Original trial: Copenhagen Study group for Liver diseases (1962--1969);
+Original trial: Copenhagen Study Group for Liver Diseases (1962--1969);
 public IPD distributed via \citet{csl_data} and \citet{survset2022}.
 Control: placebo ($n=220$); treatment: prednisone ($n=226$).
 Follow-up times are in years.  HC settings: $K=50$ intervals,
@@ -318,9 +311,7 @@ $n_\mathrm{perms}=2000$.
     Tarone-Ware                      &  0.774 & 0.379 \\
     Peto-Prentice                    &  0.574 & 0.449 \\
     Fleming-Harrington (1,1)         &  2.234 & 0.135 \\
-    Higher Criticism (HC)            &  1.257 & 0.002\sig \\
-    Fisher combination               &  77.413 & 0.034\sig \\
-    MinP (Bonferroni)                &  5.291 & 0.057 \\
+    HCHG                             &  1.257 & 0.002\sig \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -330,7 +321,7 @@ $n_\mathrm{perms}=2000$.
 % =======================================================================
 
 Table~\ref{tab:summary} condenses the log-rank and HCHG $p$-values
-reported in the main text.  Full statistics for all eight methods appear
+reported in the main text.  Full statistics for all six methods appear
 in Section~4.
 
 \begin{table}[h]
