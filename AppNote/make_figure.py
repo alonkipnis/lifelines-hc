@@ -343,8 +343,8 @@ def build_figure_4domain(out_path: Path):
 def _annotate_pvals(ax, results: pd.DataFrame) -> None:
     lr_p = results.loc["Log-rank", "p_value"] \
            if "Log-rank" in results.index else float("nan")
-    hc_p = results.loc["Higher Criticism (HC)", "p_value"] \
-           if "Higher Criticism (HC)" in results.index else float("nan")
+    hc_p = results.loc["HCHG", "p_value"] \
+           if "HCHG" in results.index else float("nan")
     text = f"Log-rank  p = {lr_p:.3f}\nHCHG      p = {hc_p:.3f}"
     ax.text(0.98, 0.42, text,
             transform=ax.transAxes, ha="right", va="top",

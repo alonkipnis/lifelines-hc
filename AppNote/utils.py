@@ -2,7 +2,7 @@
 Shared utilities for the lifelines-hc Application Note analyses.
 
 Provides:
-- run_all_tests()       : run HC, BJ, Fisher, MinP, and Log-rank
+- run_all_tests()       : run HCHG, log-rank, and four weighted alternatives
 - pvalue_profile()      : per-interval hypergeometric p-values + HC threshold
 - plot_km_with_hc()     : KM curves with HC-flagged intervals shaded
 - plot_pvalue_profile() : bar chart of -log10(p) with HC threshold line
@@ -18,8 +18,6 @@ from lifelines.statistics import logrank_test
 
 from lifelines_hc import (
     higher_criticism_test,
-    fisher_combination_test,
-    min_p_test,
     suspected_deviations,
     event_pvalues,
 )
@@ -60,12 +58,9 @@ def run_all_tests(
     Fleming-Harrington (1,1)
         Weights by S(t)(1-S(t)); emphasises middle of the follow-up,
         useful for detecting late effects after an initial null period.
-    Higher Criticism (HC)
-        Detects rare and weak deviations; optimal for sparse hazard hot-spots.
-    Fisher combination
-        Combines interval p-values via the chi-squared log-sum.
-    Minimum p-value (MinP)
-        Bonferroni-corrected single-interval test.
+    HCHG
+        Higher Criticism on per-interval hypergeometric p-values;
+        optimal for sparse hazard hot-spots at unknown locations.
 
     Parameters
     ----------
@@ -74,9 +69,9 @@ def run_all_tests(
     E_A, E_B : array-like, optional
         Event indicators (1=event, 0=censored). Default: all events.
     n_intervals : int
-        Number of equal-width time bins for the HC-based tests.
+        Number of equal-width time bins for HCHG.
     n_permutations : int
-        Label-permutation repetitions for calibrating HC-based p-values.
+        Label-permutation repetitions for calibrating the HCHG p-value.
     seed : int
         Random seed for the permutation procedure.
     gamma : float
@@ -118,23 +113,11 @@ def run_all_tests(
         n_permutations=n_permutations, seed=seed,
     )
 
-    # HC
+    # HCHG
     hc = higher_criticism_test(T_A, T_B, **shared_kw)
-    rows.append(dict(method="Higher Criticism (HC)",
+    rows.append(dict(method="HCHG",
                      statistic=hc.test_statistic,
                      p_value=hc.p_value))
-
-    # Fisher
-    fi = fisher_combination_test(T_A, T_B, **shared_kw)
-    rows.append(dict(method="Fisher combination",
-                     statistic=fi.test_statistic,
-                     p_value=fi.p_value))
-
-    # MinP
-    mp = min_p_test(T_A, T_B, **shared_kw)
-    rows.append(dict(method="MinP (Bonferroni)",
-                     statistic=mp.test_statistic,
-                     p_value=mp.p_value))
 
     df = pd.DataFrame(rows).set_index("method")
     df.attrs["label_A"] = label_A
