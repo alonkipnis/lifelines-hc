@@ -1,5 +1,9 @@
 # lifelines-hc
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23170281.svg)](https://doi.org/10.5281/zenodo.23170281)
+[![PyPI](https://img.shields.io/pypi/v/lifelines-hc.svg)](https://pypi.org/project/lifelines-hc/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Higher Criticism and related tests for detecting **non-proportional hazard
 deviations** in two-sample survival data — implemented as a
 [lifelines](https://lifelines.readthedocs.io/) extension.
@@ -10,9 +14,17 @@ classical log-rank test has little power.
 
 ## Reference
 
-> Kipnis, A., Galili, B., and Yakhini, Z. (2025). Higher criticism for rare
+**Method paper.** If you use this package, please cite:
+
+> Kipnis, A., Galili, B., and Yakhini, Z. (2026). Higher criticism for rare
 > and weak non-proportional hazard deviations in survival analysis.
-> *Biometrika*, 113, issue 1, https://academic.oup.com/biomet/article/113/1/asaf075/8307530.
+> *Biometrika*, 113(1), asaf075. [doi:10.1093/biomet/asaf075](https://doi.org/10.1093/biomet/asaf075)
+> · [arXiv:2310.00554](https://arxiv.org/abs/2310.00554)
+
+**Software.** To cite the package itself:
+
+> Kipnis, A. (2026). *lifelines-hc* [Computer software]. Zenodo.
+> [doi:10.5281/zenodo.23170281](https://doi.org/10.5281/zenodo.23170281)
 
 ## Installation
 

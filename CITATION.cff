@@ -15,6 +15,14 @@ authors:
     email: alon.kipnis@runi.ac.il
 license: MIT
 repository-code: "https://github.com/alonkipnis/lifelines-hc"
+doi: 10.5281/zenodo.23170281
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.23170281
+    description: Concept DOI, always resolves to the latest version
+  - type: doi
+    value: 10.5281/zenodo.23170282
+    description: Version DOI for v0.1.2
 keywords:
   - survival analysis
   - higher criticism
