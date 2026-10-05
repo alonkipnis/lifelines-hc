@@ -61,6 +61,9 @@ All scripts live in the \texttt{AppNote/} directory of the
 (\url{https://github.com/alonkipnis/lifelines-hc/tree/main/AppNote}).
 They require Python~${\geq}\,3.8$, \texttt{lifelines-hc}, and
 \texttt{lifelines}~${\geq}\,0.29$.
+The MaxCombo and Yang--Prentice comparisons additionally require
+\texttt{R} with the CRAN packages \texttt{nph} \citep{ristl2021nph}
+and \texttt{YPmodel} \citep{yang2005,yang2010improved}.
 
 \subsection*{Workflow}
 
@@ -78,7 +81,8 @@ They require Python~${\geq}\,3.8$, \texttt{lifelines-hc}, and
         Each \texttt{run\_*.py} script loads one dataset, calls
         \texttt{run\_all\_tests()} in \texttt{utils.py}, writes a results
         CSV to \texttt{results/}, and saves diagnostic figures to
-        \texttt{figs/}.
+        \texttt{figs/}.  \texttt{run\_all\_tests()} also invokes
+        \texttt{competitors.R} for MaxCombo and Yang--Prentice.
   \item \textbf{Build the composite figure.}
         \texttt{make\_figure.py} assembles Figure~1 of the main text from
         the four domain scripts.
@@ -107,6 +111,9 @@ They require Python~${\geq}\,3.8$, \texttt{lifelines-hc}, and
       Prednisone vs.\ placebo; public raw IPD, multi-window effect. \\
     \texttt{utils.py} & --- &
       Shared \texttt{run\_all\_tests()}, plotting, and table utilities. \\
+    \texttt{competitors.R} & --- &
+      MaxCombo (\texttt{nph::logrank.maxtest}) and Yang--Prentice
+      adaptive log-rank (\texttt{YPmodel::YPmodel.adlgrk}). \\
     \texttt{make\_figure.py} & All four &
       Composite Figure~1 panels (A--H). \\
     \bottomrule
@@ -123,6 +130,9 @@ python run_comet.py
 python run_azure.py
 python run_csl.py          # requires SurvSet or AppNote/data/CSL.csv
 python make_figure.py
+# MaxCombo / Yang--Prentice: requires R packages nph and YPmodel
+#   install.packages(c("nph", "YPmodel"))
+# invoked automatically from run_all_tests() via competitors.R
 \end{lstlisting}
 
 Each \texttt{run\_*.py} script writes
@@ -197,6 +207,20 @@ Tarone-Ware, Peto-Prentice, Fleming-Harrington with $p=q=1$) use the
 standard \texttt{lifelines.statistics.logrank\_test} implementation with
 asymptotic $p$-values.
 
+MaxCombo is the two-sided maximum of the Fleming--Harrington weighted
+log-rank $Z$-statistics with
+$(\rho,\gamma)\in\{(0,0),(0,1),(1,0),(1,1)\}$ --- the four-weight
+immuno-oncology dictionary of \citet{lin2020maxcombo} --- with
+$p$-value from the estimated multivariate normal joint distribution as
+implemented in \texttt{nph::logrank.maxtest} \citep{ristl2021nph}
+(\texttt{alternative='two.sided'}, random seed 42).  The reported
+statistic is $z_{\max}=\max_j |Z_j|$.  The Yang--Prentice adaptive
+weighted log-rank test of \citet{yang2010improved}, based on the
+short-term/long-term hazard-ratio model of \citet{yang2005}, is computed
+via \texttt{YPmodel::YPmodel.adlgrk}; the reported statistic is the
+maximum of the two adaptive $|Z|$ components used internally by that
+procedure.
+
 % =======================================================================
 \section{Per-method results tables}
 % =======================================================================
@@ -230,10 +254,19 @@ HC settings: $K=60$ intervals, $n_\mathrm{perms}=2000$.
     Tarone-Ware                      &  0.844 & 0.358 \\
     Peto-Prentice                    &  3.869 & 0.049\sig \\
     Fleming-Harrington (1,1)         &  1.292 & 0.256 \\
+    MaxCombo                         &  4.268 & $2.5\times 10^{-5}$\sig \\
+    Yang--Prentice                   &  3.626 & 0.00055\sig \\
     HCHG                             &  1.695 & 0.001\sig \\
     \bottomrule
   \end{tabular}
 \end{table}
+
+\noindent
+MaxCombo is driven by the late-weighted $\mathrm{FH}(0,1)$ member
+($Z=4.27$, $p=2.0\times 10^{-5}$); $\mathrm{FH}(0,0)$, $\mathrm{FH}(1,0)$,
+and $\mathrm{FH}(1,1)$ have two-sided $p=0.351$, $0.058$, and $0.256$.
+The Yang--Prentice fit yields short-term hazard ratio
+$\hat\theta_1=2.33$ and long-term ratio $\hat\theta_2=0.44$.
 
 % -----------------------------------------------------------------------
 \subsection*{COMET-1 --- overall survival ($n=1028$)}
@@ -257,6 +290,8 @@ HC settings: $K=80$ intervals, $n_\mathrm{perms}=2000$.
     Tarone-Ware                      &  1.570 & 0.210 \\
     Peto-Prentice                    &  1.602 & 0.206 \\
     Fleming-Harrington (1,1)         &  0.648 & 0.421 \\
+    MaxCombo                         &  1.258 & 0.338 \\
+    Yang--Prentice                   &  1.176 & 0.262 \\
     HCHG                             &  1.179 & 0.014\sig \\
     \bottomrule
   \end{tabular}
@@ -284,6 +319,8 @@ Control: standard adjuvant therapy ($n=1678$); treatment: zoledronic acid
     Tarone-Ware                      &  0.691 & 0.406 \\
     Peto-Prentice                    &  1.145 & 0.284 \\
     Fleming-Harrington (1,1)         &  0.277 & 0.598 \\
+    MaxCombo                         &  1.072 & 0.401 \\
+    Yang--Prentice                   &  1.044 & 0.308 \\
     HCHG                             &  1.513 & 0.005\sig \\
     \bottomrule
   \end{tabular}
@@ -311,6 +348,8 @@ $n_\mathrm{perms}=2000$.
     Tarone-Ware                      &  0.774 & 0.379 \\
     Peto-Prentice                    &  0.574 & 0.449 \\
     Fleming-Harrington (1,1)         &  2.234 & 0.135 \\
+    MaxCombo                         &  1.495 & 0.236 \\
+    Yang--Prentice                   &  0.872 & 0.393 \\
     HCHG                             &  1.257 & 0.002\sig \\
     \bottomrule
   \end{tabular}
@@ -320,34 +359,35 @@ $n_\mathrm{perms}=2000$.
 \section{Cross-dataset summary}
 % =======================================================================
 
-Table~\ref{tab:summary} condenses the log-rank and HCHG $p$-values
-reported in the main text.  Full statistics for all six methods appear
-in Section~4.
+Table~\ref{tab:summary} condenses the log-rank, MaxCombo, Yang--Prentice,
+and HCHG $p$-values reported in the main text.  Full statistics for all
+eight methods appear in Section~4.
 
 \begin{table}[h]
   \centering
-  \caption{Summary of log-rank and HCHG $p$-values across the four
-           case studies (full tables in Section~4).}
+  \caption{Summary of log-rank, MaxCombo, Yang--Prentice, and HCHG
+           $p$-values across the four case studies (full tables in Section~4).}
   \label{tab:summary}
   \small
-  \begin{tabular}{@{}llrrr@{}}
+  \begin{tabular}{@{}llrrrrr@{}}
     \toprule
-    Dataset & Endpoint & $n$ & Log-rank $p$ & HCHG $p$ \\
+    Dataset & Endpoint & $n$ & Log-rank & MaxCombo & Yang--Prentice & HCHG \\
     \midrule
-    CheckMate~057  & PFS &  582 & 0.351 & 0.001 \\
-    COMET-1        & OS  & 1028 & 0.262 & 0.014 \\
-    AZURE          & DFS & 3359 & 0.305 & 0.005 \\
-    CSL            & OS  &  446 & 0.384 & 0.002 \\
+    CheckMate~057  & PFS &  582 & 0.351 & $2.5\times 10^{-5}$ & 0.00055 & 0.001 \\
+    COMET-1        & OS  & 1028 & 0.262 & 0.338 & 0.262 & 0.014 \\
+    AZURE          & DFS & 3359 & 0.305 & 0.401 & 0.308 & 0.005 \\
+    CSL            & OS  &  446 & 0.384 & 0.236 & 0.393 & 0.002 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
 \noindent
 Across all four datasets, HCHG achieves $p \leq 0.014$ while the log-rank
-test is non-significant throughout ($p \geq 0.26$). Among the weighted
-log-rank alternatives, only CheckMate~057 Gehan-Wilcoxon and Peto-Prentice
-reach $p < 0.05$ (at 0.041 and 0.049 respectively); every other weighted
-test returns $p \geq 0.13$.
+test is non-significant throughout ($p \geq 0.26$). MaxCombo and
+Yang--Prentice detect the delayed-benefit crossing on CheckMate~057 but
+are non-significant on COMET-1, AZURE, and CSL ($p \geq 0.24$). Among the
+single weighted log-rank alternatives, only CheckMate~057 Gehan-Wilcoxon
+and Peto-Prentice reach $p < 0.05$ (at 0.041 and 0.049 respectively).
 
 % =======================================================================
 \section{Machine-readable results}
@@ -361,6 +401,9 @@ The CSV files below contain the same values as Tables~\ref{tab:checkmate}--\ref{
   \item \texttt{AppNote/results/comet\_test\_results.csv}
   \item \texttt{AppNote/results/azure\_test\_results.csv}
   \item \texttt{AppNote/results/csl\_test\_results.csv}
+  \item \texttt{AppNote/results/maxcombo\_yp\_details.json}
+        (MaxCombo component $Z$-statistics and Yang--Prentice
+        $\hat\theta_1$, $\hat\theta_2$).
 \end{itemize}
 
 % =======================================================================

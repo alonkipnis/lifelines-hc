@@ -2,13 +2,20 @@
 Shared utilities for the lifelines-hc Application Note analyses.
 
 Provides:
-- run_all_tests()       : run HCHG, log-rank, and four weighted alternatives
+- run_all_tests()       : run HCHG, log-rank, weighted alternatives,
+                          MaxCombo, and Yang-Prentice
 - pvalue_profile()      : per-interval hypergeometric p-values + HC threshold
 - plot_km_with_hc()     : KM curves with HC-flagged intervals shaded
 - plot_pvalue_profile() : bar chart of -log10(p) with HC threshold line
 """
 
 from __future__ import annotations
+
+import json
+import shutil
+import subprocess
+import tempfile
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -21,6 +28,8 @@ from lifelines_hc import (
     suspected_deviations,
     event_pvalues,
 )
+
+COMPETITORS_RSCRIPT = Path(__file__).resolve().parent / "competitors.R"
 
 DEFAULT_N_INTERVALS = 100
 DEFAULT_N_PERMS = 500
@@ -58,6 +67,12 @@ def run_all_tests(
     Fleming-Harrington (1,1)
         Weights by S(t)(1-S(t)); emphasises middle of the follow-up,
         useful for detecting late effects after an initial null period.
+    MaxCombo
+        Maximum of Fleming-Harrington FH(0,0), FH(0,1), FH(1,0), FH(1,1)
+        with a multivariate-normal multiplicity adjustment (Lin et al. 2020).
+    Yang-Prentice
+        Adaptive weighted log-rank test (Yang and Prentice 2010) based on
+        the short-term / long-term hazard-ratio model (Yang and Prentice 2005).
     HCHG
         Higher Criticism on per-interval hypergeometric p-values;
         optimal for sparse hazard hot-spots at unknown locations.
@@ -105,6 +120,15 @@ def run_all_tests(
         rows.append(dict(method=method_name,
                          statistic=r.test_statistic,
                          p_value=r.p_value))
+
+    combo = maxcombo_yp_tests(T_A, T_B, E_A, E_B, seed=seed)
+    if combo is not None:
+        rows.append(dict(method="MaxCombo",
+                         statistic=combo["maxcombo"]["statistic"],
+                         p_value=combo["maxcombo"]["p_value"]))
+        rows.append(dict(method="Yang-Prentice",
+                         statistic=combo["yang_prentice"]["statistic"],
+                         p_value=combo["yang_prentice"]["p_value"]))
 
     shared_kw = dict(
         event_observed_A=E_A, event_observed_B=E_B,
@@ -282,12 +306,54 @@ def plot_pvalue_profile(
 
 def print_results_table(df: pd.DataFrame) -> None:
     """Pretty-print the comparison DataFrame from :func:`run_all_tests`."""
-    print(f"\n{'Method':<30} {'Statistic':>12} {'p-value':>10}")
-    print("-" * 54)
+    print(f"\n{'Method':<30} {'Statistic':>12} {'p-value':>12}")
+    print("-" * 56)
     for method, row in df.iterrows():
         sig = "*" if row["p_value"] < 0.05 else " "
-        print(f"{method:<30} {row['statistic']:>12.4f} {row['p_value']:>10.4f} {sig}")
+        p = row["p_value"]
+        p_str = f"{p:.2e}" if p < 0.001 else f"{p:12.4f}"
+        print(f"{method:<30} {row['statistic']:>12.4f} {p_str:>12} {sig}")
     print()
+
+
+def maxcombo_yp_tests(T_A, T_B, E_A=None, E_B=None, seed: int = DEFAULT_SEED):
+    """Run MaxCombo and Yang-Prentice via the companion R script.
+
+    Returns a nested dict with ``maxcombo`` and ``yang_prentice`` keys, or
+    ``None`` if R / the required CRAN packages are unavailable.
+    """
+    rscript = shutil.which("Rscript")
+    if rscript is None or not COMPETITORS_RSCRIPT.exists():
+        print("[WARN] Rscript or competitors.R not found; skipping MaxCombo/YP.")
+        return None
+
+    T_A, T_B = np.asarray(T_A, float), np.asarray(T_B, float)
+    if E_A is None:
+        E_A = np.ones(len(T_A), dtype=float)
+    if E_B is None:
+        E_B = np.ones(len(T_B), dtype=float)
+    df = pd.DataFrame({
+        "time":  np.concatenate([T_A, T_B]),
+        "event": np.concatenate([np.asarray(E_A, float), np.asarray(E_B, float)]),
+        "group": np.concatenate([np.zeros(len(T_A), dtype=int),
+                                 np.ones(len(T_B), dtype=int)]),
+    })
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        csv_path = tmp / "surv.csv"
+        json_path = tmp / "out.json"
+        df.to_csv(csv_path, index=False)
+        proc = subprocess.run(
+            [rscript, str(COMPETITORS_RSCRIPT), str(csv_path),
+             str(json_path), str(int(seed))],
+            capture_output=True, text=True,
+        )
+        if proc.returncode != 0 or not json_path.exists():
+            print("[WARN] MaxCombo/YP R call failed; skipping.")
+            if proc.stderr:
+                print(proc.stderr[-1500:])
+            return None
+        return json.loads(json_path.read_text())
 
 
 # ---------------------------------------------------------------------------

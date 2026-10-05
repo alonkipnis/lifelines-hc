@@ -1,0 +1,61 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software, please cite both the software itself and the
+  paper describing the underlying method.
+title: "lifelines-hc"
+abstract: >-
+  Higher Criticism (HCHG) tests for detecting sparse, non-proportional
+  hazard deviations in two-sample right-censored survival data, implemented
+  as an extension of the lifelines survival library.
+type: software
+authors:
+  - family-names: Kipnis
+    given-names: Alon
+    affiliation: "Reichman University"
+    email: alon.kipnis@runi.ac.il
+license: MIT
+repository-code: "https://github.com/alonkipnis/lifelines-hc"
+keywords:
+  - survival analysis
+  - higher criticism
+  - non-proportional hazards
+  - sparse signal detection
+  - hypothesis testing
+  - Python
+version: 0.1.2
+preferred-citation:
+  type: article
+  title: >-
+    Higher criticism for rare and weak non-proportional hazard deviations
+    in survival analysis
+  authors:
+    - family-names: Kipnis
+      given-names: Alon
+    - family-names: Galili
+      given-names: Ben
+    - family-names: Yakhini
+      given-names: Zohar
+  journal: Biometrika
+  volume: 113
+  issue: 1
+  start: asaf075
+  year: 2026
+  doi: 10.1093/biomet/asaf075
+references:
+  - type: article
+    title: >-
+      Higher criticism for rare and weak non-proportional hazard deviations
+      in survival analysis
+    authors:
+      - family-names: Kipnis
+        given-names: Alon
+      - family-names: Galili
+        given-names: Ben
+      - family-names: Yakhini
+        given-names: Zohar
+    journal: Biometrika
+    volume: 113
+    issue: 1
+    start: asaf075
+    year: 2026
+    doi: 10.1093/biomet/asaf075

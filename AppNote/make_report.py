@@ -30,7 +30,7 @@ def b64img(path: Path) -> str:
     return f'<img src="data:image/png;base64,{data}" style="max-width:100%;">'
 
 
-def results_table(csv_path: Path, highlight_method="Higher Criticism (HC)",
+def results_table(csv_path: Path, highlight_method="HCHG",
                   gene_filter: str | None = None) -> str:
     """Read a results CSV and return an HTML <table>."""
     df = pd.read_csv(csv_path, index_col=0)
@@ -134,9 +134,11 @@ def make_html(out_path: Path) -> None:
 
 <div class="summary-box">
 <strong>Overview.</strong>
-We evaluate the Higher Criticism (HC) test against log-rank and four
+We evaluate the Higher Criticism (HC) test against log-rank, four
 weighted log-rank variants designed for non-proportional hazards —
 Gehan-Wilcoxon, Tarone-Ware, Peto-Prentice, and Fleming-Harrington(1,1) —
+plus MaxCombo (maximum over FH(0,0), FH(0,1), FH(1,0), FH(1,1)) and the
+Yang–Prentice adaptive log-rank test.
 across three real clinical datasets with distinct non-proportional-hazards
 patterns: crossing immunotherapy curves (CheckMate 057 PFS), a
 menopause-dependent accumulated benefit in adjuvant bisphosphonate therapy

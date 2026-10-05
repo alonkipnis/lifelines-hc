@@ -20,7 +20,12 @@ AppNote/data/*.csv          # reconstructed IPD; regenerate via 01_get_kmdata.py
 *.aux
 *.log
 *.bbl
+# arXiv does not run BibTeX, so the preprint build must ship its .bbl
+!AppNote/paper/arxiv/main.bbl
 *.blg
 *.out
 *.synctex.gz
 *.toc
+
+# arXiv submission tarball (regenerate from AppNote/paper/arxiv/)
+AppNote/paper/arxiv/*.tar.gz
