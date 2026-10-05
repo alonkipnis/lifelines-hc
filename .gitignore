@@ -28,3 +28,6 @@ AppNote/biology_report.html
 
 # arXiv submission tarball (regenerate from AppNote/paper/arxiv/)
 AppNote/paper/arxiv/*.tar.gz
+
+# SoftwareX build artifacts
+AppNote/paper/softwarex/*.tar.gz
