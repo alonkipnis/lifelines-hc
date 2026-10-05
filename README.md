@@ -12,7 +12,7 @@ classical log-rank test has little power.
 
 > Kipnis, A., Galili, B., and Yakhini, Z. (2025). Higher criticism for rare
 > and weak non-proportional hazard deviations in survival analysis.
-> *Biometrika*, 113, issue 1, https://EconPapers.repec.org/RePEc:oup:biomet:v:113:y:2026:i:1:p:asaf075..
+> *Biometrika*, 113, issue 1, https://academic.oup.com/biomet/article/113/1/asaf075/8307530.
 
 ## Installation
 
