@@ -31,3 +31,7 @@ AppNote/paper/arxiv/*.tar.gz
 
 # SoftwareX build artifacts
 AppNote/paper/softwarex/*.tar.gz
+
+# R package build artifacts
+R-package/*.tar.gz
+R-package/*.Rcheck/

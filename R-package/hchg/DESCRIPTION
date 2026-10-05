@@ -1,0 +1,27 @@
+Package: hchg
+Type: Package
+Title: Higher Criticism Tests for Non-Proportional Hazard Deviations
+Version: 0.1.0
+Authors@R: c(
+    person("Alon", "Kipnis", email = "alon.kipnis@runi.ac.il",
+           role = c("aut", "cre")),
+    person("Ben", "Galili", role = "aut"),
+    person("Zohar", "Yakhini", role = "aut"))
+Description: Omnibus tests for comparing two right-censored survival samples
+    that are powerful against sparse departures from equal hazards, where the
+    hazard difference is concentrated in a small and a priori unknown subset of
+    the follow-up. Exact hypergeometric p-values are computed for each time
+    interval and aggregated with the Higher Criticism statistic of Donoho and
+    Jin (2004) <doi:10.1214/009053604000000265>, or alternatively with the
+    Berk-Jones, Fisher or minimum-p statistics. Global p-values are obtained by
+    permuting group labels, and the intervals driving a detection can be
+    recovered for diagnostic plotting. The method is described in Kipnis,
+    Galili and Yakhini (2026) <doi:10.1093/biomet/asaf075>.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Depends: R (>= 3.5.0)
+Imports: stats, graphics
+URL: https://github.com/alonkipnis/lifelines-hc
+BugReports: https://github.com/alonkipnis/lifelines-hc/issues
+NeedsCompilation: no
+RoxygenNote: 7.3.2
