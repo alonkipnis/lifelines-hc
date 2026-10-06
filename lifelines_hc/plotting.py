@@ -136,7 +136,7 @@ class KaplanMeierHCIllustrator:
     # ------------------------------------------------------------------
 
     def test(self, n_intervals_to_pool=None, gamma=0.2, alternative="greater",
-             stbl=True, t_0=-1, n_permutations=0, seed=None, **kwargs):
+             hc_version="dj2008", t_0=-1, n_permutations=0, seed=None, **kwargs):
         """Run the Higher Criticism test, optionally with a permutation p-value.
 
         Convenience wrapper around :func:`~lifelines_hc.higher_criticism_test`
@@ -144,7 +144,7 @@ class KaplanMeierHCIllustrator:
 
         Parameters
         ----------
-        n_intervals_to_pool, gamma, alternative, stbl, t_0, n_permutations, seed
+        n_intervals_to_pool, gamma, alternative, hc_version, t_0, n_permutations, seed
             See :func:`~lifelines_hc.higher_criticism_test`.
 
         Returns
@@ -154,7 +154,7 @@ class KaplanMeierHCIllustrator:
         return higher_criticism_test(
             self.durations_A, self.durations_B,
             self.event_observed_A, self.event_observed_B,
-            alternative=alternative, gamma=gamma, stbl=stbl, t_0=t_0,
+            alternative=alternative, gamma=gamma, hc_version=hc_version, t_0=t_0,
             n_intervals_to_pool=n_intervals_to_pool,
             n_permutations=n_permutations, seed=seed, **kwargs,
         )

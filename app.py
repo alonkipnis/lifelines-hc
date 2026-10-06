@@ -151,7 +151,17 @@ alternative = st.sidebar.selectbox(
         "**both**: maximum of both directions."
     ),
 )
-stbl = st.sidebar.checkbox("Stabilised HC", value=True)
+hc_version = st.sidebar.selectbox(
+    "HC version",
+    options=["dj2008", "dj2004", "beta", "star"],
+    index=0,
+    help=(
+        "**dj2008**: Donoho–Jin 2008 (default).  "
+        "**dj2004**: Donoho–Jin 2004.  "
+        "**beta**: beta-distribution std.  "
+        "**star**: HC† (p-values > 1/n only)."
+    ),
+)
 
 t_0_option = st.sidebar.checkbox("Restrict time range (t₀)", value=False)
 t_0 = -1.0
@@ -207,7 +217,7 @@ with st.spinner("Computing HC test…"):
     hc_result = higher_criticism_test(
         T_A, T_B, event_A, event_B,
         n_intervals_to_pool=n_intervals,
-        gamma=gamma, alternative=alternative, stbl=stbl,
+        gamma=gamma, alternative=alternative, hc_version=hc_version,
         t_0=t_0, n_permutations=int(n_perms), seed=int(seed),
     )
 
@@ -216,7 +226,7 @@ with st.spinner("Computing HC test…"):
     df_dev = suspected_deviations(
         T_A, T_B, event_A, event_B,
         n_intervals_to_pool=n_intervals,
-        gamma=gamma, alternative=alternative, stbl=stbl, t_0=t_0,
+        gamma=gamma, alternative=alternative, hc_version=hc_version, t_0=t_0,
     )
 
 # ── Summary metrics ──────────────────────────────────────────────────────

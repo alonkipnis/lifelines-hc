@@ -1,10 +1,9 @@
 """Regression test: the four Application Note case studies must reproduce the
 HCHG values reported in the manuscript.
 
-These pin the Donoho-Jin 2008 standardization. They fail if the HC
-standardization changes underneath the package again -- which is exactly what
-happened when multitest switched its default, and is why lifelines_hc now calls
-hc_dj2008() explicitly instead of the version-dependent hc().
+These pin the Donoho-Jin 2008 standardization (``hc_version='dj2008'``, the
+package default). They fail if a different HC standardization is used by
+mistake.
 """
 import pathlib
 

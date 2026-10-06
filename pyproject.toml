@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lifelines-hc"
-version = "0.1.2"
+version = "0.1.3"
 description = "Higher Criticism and related tests for non-proportional hazard deviations — a lifelines extension."
 readme = "README.md"
 license = "MIT"
@@ -31,9 +31,8 @@ dependencies = [
     "numpy",
     "pandas",
     "lifelines",
-    # hc_dj2008()/hc_dj2004() are required: the HC standardization must be
-    # requested explicitly, because the default changed between releases.
-    "multiple-hypothesis-testing @ git+https://github.com/alonkipnis/multiple-hypothesis-testing@main",
+    # Named HC methods (hc_dj2008, hc_dj2004, …); default in lifelines-hc is dj2008.
+    "multiple-hypothesis-testing>=0.2.2",
     "multiHGtest>=0.0.3",
 ]
 

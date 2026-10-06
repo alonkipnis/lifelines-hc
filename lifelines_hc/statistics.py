@@ -30,6 +30,29 @@ __all__ = [
 ]
 
 _DEFAULT_GAMMA = 0.2
+_DEFAULT_HC_VERSION = "dj2008"
+
+# Named Higher Criticism variants exposed by multitest.MultiTest.
+_HC_VERSIONS = {
+    "dj2008": "hc_dj2008",  # Donoho–Jin 2008 (theoretical uniform std)
+    "dj2004": "hc_dj2004",  # Donoho–Jin 2004 (observed p-value std)
+    "beta": "hc_beta",      # beta-distribution standardization
+    "star": "hc_star",      # HC†: only p-values > 1/n
+}
+
+
+def _resolve_hc_method(mt, hc_version):
+    """Return the MultiTest HC callable for *hc_version*."""
+    key = str(hc_version).lower()
+    if key.startswith("hc_"):
+        key = key[3:]
+    method_name = _HC_VERSIONS.get(key)
+    if method_name is None:
+        valid = ", ".join(sorted(_HC_VERSIONS))
+        raise ValueError(
+            f"Unknown hc_version={hc_version!r}; expected one of: {valid}"
+        )
+    return getattr(mt, method_name)
 
 
 # ---------------------------------------------------------------------------
@@ -176,18 +199,18 @@ def _one_direction_pvals(Nt1, Nt2, Ot1, Ot2):
     )
 
 
-def _aggregate(pvals, method, gamma, stbl):
+def _aggregate(pvals, method, gamma, hc_version):
     """Aggregate a vector of p-values into a single test statistic."""
     if len(pvals) == 0:
         return 0.0
     mt = MultiTest(pvals)
     if method == "hc":
-        # stbl selects the standardization of the ordered p-values:
-        #   True  -> Donoho-Jin 2008, u_i = i/N, denom sqrt(u_i(1-u_i)/N)
-        #   False -> Donoho-Jin 2004, u_i = i/N, denom sqrt(p_(i)(1-p_(i))/N)
-        # The latter is equation (2) of Kipnis, Galili and Yakhini (2026).
-        hc_fn = mt.hc_dj2008 if stbl else mt.hc_dj2004
-        return hc_fn(gamma=gamma, return_threshold=True)[0]
+        # hc_version selects the standardization via named multitest methods.
+        # Default "dj2008" is Donoho–Jin 2008 (theoretical uniform std).
+        # "dj2004" is equation (2) of Kipnis, Galili and Yakhini (2026).
+        return _resolve_hc_method(mt, hc_version)(
+            gamma=gamma, return_threshold=True,
+        )[0]
     if method == "berk_jones":
         return mt.berkjones(gamma=gamma)
     if method == "fisher":
@@ -198,17 +221,17 @@ def _aggregate(pvals, method, gamma, stbl):
     raise ValueError(f"Unknown aggregation method: {method!r}")
 
 
-def _stat_from_counts(Nt1, Nt2, Ot1, Ot2, method, alternative, gamma, stbl):
+def _stat_from_counts(Nt1, Nt2, Ot1, Ot2, method, alternative, gamma, hc_version):
     """Compute the aggregated test statistic from survival-table counts."""
     if len(Nt1) == 0:
         return 0.0
 
     if alternative == "both":
         stat_g = _aggregate(
-            _one_direction_pvals(Nt1, Nt2, Ot1, Ot2), method, gamma, stbl
+            _one_direction_pvals(Nt1, Nt2, Ot1, Ot2), method, gamma, hc_version
         )
         stat_l = _aggregate(
-            _one_direction_pvals(Nt2, Nt1, Ot2, Ot1), method, gamma, stbl
+            _one_direction_pvals(Nt2, Nt1, Ot2, Ot1), method, gamma, hc_version
         )
         return max(stat_g, stat_l)
 
@@ -216,13 +239,13 @@ def _stat_from_counts(Nt1, Nt2, Ot1, Ot2, method, alternative, gamma, stbl):
         pvals = _one_direction_pvals(Nt1, Nt2, Ot1, Ot2)
     else:
         pvals = _one_direction_pvals(Nt2, Nt1, Ot2, Ot1)
-    return _aggregate(pvals, method, gamma, stbl)
+    return _aggregate(pvals, method, gamma, hc_version)
 
 
 def _permutation_pvalue(durations_A, durations_B,
                         event_observed_A, event_observed_B,
                         observed_stat, n_permutations, method,
-                        alternative, gamma, stbl, t_0, n_intervals_to_pool, rng):
+                        alternative, gamma, hc_version, t_0, n_intervals_to_pool, rng):
     """Estimate a p-value by permuting group labels.
 
     Returns ``(p_value, perm_stats)`` where *perm_stats* is the array of
@@ -254,7 +277,7 @@ def _permutation_pvalue(durations_A, durations_B,
             d_A, d_B, e_A, e_B, t_0, n_intervals_to_pool,
         )
         perm_stats[i] = _stat_from_counts(
-            Nt1, Nt2, Ot1, Ot2, method, alternative, gamma, stbl,
+            Nt1, Nt2, Ot1, Ot2, method, alternative, gamma, hc_version,
         )
 
     p_value = (np.sum(perm_stats >= observed_stat) + 1) / (n_permutations + 1)
@@ -266,38 +289,42 @@ def _permutation_pvalue(durations_A, durations_B,
 # ---------------------------------------------------------------------------
 
 def _run_test(durations_A, durations_B, event_observed_A, event_observed_B,
-              method, test_name, alternative, gamma, stbl, t_0, n_intervals_to_pool,
-              n_permutations, seed, **extra_kw):
+              method, test_name, alternative, gamma, hc_version, t_0,
+              n_intervals_to_pool, n_permutations, seed, **extra_kw):
     """Shared implementation behind every public test function."""
     Nt1, Nt2, Ot1, Ot2, *_ = _survival_table_counts(
         durations_A, durations_B, event_observed_A, event_observed_B,
         t_0, n_intervals_to_pool,
     )
 
-    stat = _stat_from_counts(Nt1, Nt2, Ot1, Ot2, method, alternative, gamma, stbl)
+    stat = _stat_from_counts(
+        Nt1, Nt2, Ot1, Ot2, method, alternative, gamma, hc_version,
+    )
 
     perm_stats = None
     if n_permutations > 0:
         rng = np.random.default_rng(seed)
         p_value, perm_stats = _permutation_pvalue(
             durations_A, durations_B, event_observed_A, event_observed_B,
-            stat, n_permutations, method, alternative, gamma, stbl,
+            stat, n_permutations, method, alternative, gamma, hc_version,
             t_0, n_intervals_to_pool, rng,
         )
     else:
         p_value = np.nan
 
-    result = StatisticalResult(
+    result_kw = dict(
         p_value=p_value,
         test_statistic=stat,
         test_name=test_name,
         alternative=alternative,
         gamma=gamma,
-        stbl=stbl,
         n_intervals_to_pool=n_intervals_to_pool,
         n_permutations=n_permutations,
         **extra_kw,
     )
+    if method == "hc":
+        result_kw["hc_version"] = hc_version
+    result = StatisticalResult(**result_kw)
     result.permutation_statistics = perm_stats
     return result
 
@@ -313,7 +340,7 @@ def higher_criticism_test(
     event_observed_B=None,
     alternative="both",
     gamma=_DEFAULT_GAMMA,
-    stbl=True,
+    hc_version=_DEFAULT_HC_VERSION,
     t_0=-1,
     n_intervals_to_pool=None,
     n_permutations=0,
@@ -345,8 +372,13 @@ def higher_criticism_test(
     gamma : float
         HC fraction parameter (default 0.2).  Only ordered p-values with
         rank :math:`\le \gamma n` are considered.
-    stbl : bool
-        Use the variance-stabilised HC denominator (default ``True``).
+    hc_version : ``{'dj2008', 'dj2004', 'beta', 'star'}``
+        Higher Criticism standardization (default ``'dj2008'``):
+
+        * ``'dj2008'`` — Donoho–Jin 2008 (theoretical uniform std).
+        * ``'dj2004'`` — Donoho–Jin 2004 (observed p-value std).
+        * ``'beta'`` — beta-distribution standardization.
+        * ``'star'`` — HC†: only p-values larger than :math:`1/n`.
     t_0 : float
         Restrict to events before ``t_0`` (``-1`` = no restriction).
     n_intervals_to_pool : int, optional
@@ -393,8 +425,9 @@ def higher_criticism_test(
         durations_A, durations_B, event_observed_A, event_observed_B,
         method="hc",
         test_name="Higher Criticism test for non-proportional hazards",
-        alternative=alternative, gamma=gamma, stbl=stbl, t_0=t_0,
-        n_intervals_to_pool=n_intervals_to_pool, n_permutations=n_permutations, seed=seed, **kwargs,
+        alternative=alternative, gamma=gamma, hc_version=hc_version, t_0=t_0,
+        n_intervals_to_pool=n_intervals_to_pool, n_permutations=n_permutations,
+        seed=seed, **kwargs,
     )
 
 
@@ -405,7 +438,6 @@ def berk_jones_test(
     event_observed_B=None,
     alternative="both",
     gamma=_DEFAULT_GAMMA,
-    stbl=True,
     t_0=-1,
     n_intervals_to_pool=None,
     n_permutations=0,
@@ -421,7 +453,7 @@ def berk_jones_test(
     Parameters
     ----------
     durations_A, durations_B, event_observed_A, event_observed_B,
-    alternative, gamma, stbl, t_0, n_intervals_to_pool, n_permutations, seed
+    alternative, gamma, t_0, n_intervals_to_pool, n_permutations, seed
         See :func:`higher_criticism_test`.
 
     Returns
@@ -432,8 +464,9 @@ def berk_jones_test(
         durations_A, durations_B, event_observed_A, event_observed_B,
         method="berk_jones",
         test_name="Berk-Jones test for non-proportional hazards",
-        alternative=alternative, gamma=gamma, stbl=stbl, t_0=t_0,
-        n_intervals_to_pool=n_intervals_to_pool, n_permutations=n_permutations, seed=seed, **kwargs,
+        alternative=alternative, gamma=gamma, hc_version=_DEFAULT_HC_VERSION,
+        t_0=t_0, n_intervals_to_pool=n_intervals_to_pool,
+        n_permutations=n_permutations, seed=seed, **kwargs,
     )
 
 
@@ -444,7 +477,6 @@ def fisher_combination_test(
     event_observed_B=None,
     alternative="both",
     gamma=_DEFAULT_GAMMA,
-    stbl=True,
     t_0=-1,
     n_intervals_to_pool=None,
     n_permutations=0,
@@ -460,7 +492,7 @@ def fisher_combination_test(
     Parameters
     ----------
     durations_A, durations_B, event_observed_A, event_observed_B,
-    alternative, gamma, stbl, t_0, n_intervals_to_pool, n_permutations, seed
+    alternative, gamma, t_0, n_intervals_to_pool, n_permutations, seed
         See :func:`higher_criticism_test`.
 
     Returns
@@ -471,8 +503,9 @@ def fisher_combination_test(
         durations_A, durations_B, event_observed_A, event_observed_B,
         method="fisher",
         test_name="Fisher combination test for non-proportional hazards",
-        alternative=alternative, gamma=gamma, stbl=stbl, t_0=t_0,
-        n_intervals_to_pool=n_intervals_to_pool, n_permutations=n_permutations, seed=seed, **kwargs,
+        alternative=alternative, gamma=gamma, hc_version=_DEFAULT_HC_VERSION,
+        t_0=t_0, n_intervals_to_pool=n_intervals_to_pool,
+        n_permutations=n_permutations, seed=seed, **kwargs,
     )
 
 
@@ -483,7 +516,6 @@ def min_p_test(
     event_observed_B=None,
     alternative="both",
     gamma=_DEFAULT_GAMMA,
-    stbl=True,
     t_0=-1,
     n_intervals_to_pool=None,
     n_permutations=0,
@@ -498,7 +530,7 @@ def min_p_test(
     Parameters
     ----------
     durations_A, durations_B, event_observed_A, event_observed_B,
-    alternative, gamma, stbl, t_0, n_intervals_to_pool, n_permutations, seed
+    alternative, gamma, t_0, n_intervals_to_pool, n_permutations, seed
         See :func:`higher_criticism_test`.
 
     Returns
@@ -509,8 +541,9 @@ def min_p_test(
         durations_A, durations_B, event_observed_A, event_observed_B,
         method="min_p",
         test_name="Minimum-p test for non-proportional hazards",
-        alternative=alternative, gamma=gamma, stbl=stbl, t_0=t_0,
-        n_intervals_to_pool=n_intervals_to_pool, n_permutations=n_permutations, seed=seed, **kwargs,
+        alternative=alternative, gamma=gamma, hc_version=_DEFAULT_HC_VERSION,
+        t_0=t_0, n_intervals_to_pool=n_intervals_to_pool,
+        n_permutations=n_permutations, seed=seed, **kwargs,
     )
 
 
@@ -562,7 +595,7 @@ def suspected_deviations(
     event_observed_B=None,
     alternative="greater",
     gamma=_DEFAULT_GAMMA,
-    stbl=True,
+    hc_version=_DEFAULT_HC_VERSION,
     t_0=-1,
     n_intervals_to_pool=None,
 ):
@@ -576,7 +609,7 @@ def suspected_deviations(
     Parameters
     ----------
     durations_A, durations_B, event_observed_A, event_observed_B,
-    alternative, gamma, stbl, t_0, n_intervals_to_pool
+    alternative, gamma, hc_version, t_0, n_intervals_to_pool
         See :func:`higher_criticism_test`.
 
     Returns
@@ -604,8 +637,9 @@ def suspected_deviations(
     usable = pvals <= 1
     if usable.any():
         mt = MultiTest(pvals[usable])
-        hc_fn = mt.hc_dj2008 if stbl else mt.hc_dj2004
-        hc_score, hc_thresh = hc_fn(gamma=gamma, return_threshold=True)
+        hc_score, hc_thresh = _resolve_hc_method(mt, hc_version)(
+            gamma=gamma, return_threshold=True,
+        )
     else:
         hc_score, hc_thresh = 0.0, 0.0
 
@@ -639,8 +673,9 @@ def suspected_deviations(
         usable_rev = pvals_rev <= 1
         if usable_rev.any():
             mt_rev = MultiTest(pvals_rev[usable_rev])
-            hc_fn_rev = mt_rev.hc_dj2008 if stbl else mt_rev.hc_dj2004
-            _, hc_thresh_rev = hc_fn_rev(gamma=gamma, return_threshold=True)
+            _, hc_thresh_rev = _resolve_hc_method(mt_rev, hc_version)(
+                gamma=gamma, return_threshold=True,
+            )
         else:
             hc_thresh_rev = 0.0
         flagged_rev = pvals_rev <= hc_thresh_rev
