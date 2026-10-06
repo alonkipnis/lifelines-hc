@@ -25,8 +25,9 @@
 plot_pvalue_profile <- function(durations_A, durations_B,
                                 event_observed_A = NULL,
                                 event_observed_B = NULL,
-                                gamma = 0.2, stbl = TRUE, t_0 = -1,
-                                n_intervals_to_pool = NULL,
+                                gamma = 0.2, stbl = TRUE,
+                                normalization = c("donoho-jin2008", "beta"),
+                                t_0 = -1, n_intervals_to_pool = NULL,
                                 col_flagged = "firebrick",
                                 col_plain = "steelblue",
                                 xlab = "Time", ylab = "signed -log10(p)",
@@ -34,7 +35,8 @@ plot_pvalue_profile <- function(durations_A, durations_B,
   d <- suspected_deviations(durations_A, durations_B,
                             event_observed_A, event_observed_B,
                             alternative = "both", gamma = gamma, stbl = stbl,
-                            t_0 = t_0, n_intervals_to_pool = n_intervals_to_pool)
+                            normalization = normalization, t_0 = t_0,
+                            n_intervals_to_pool = n_intervals_to_pool)
 
   tt <- if ("time" %in% names(d)) d$time else (d$time_lower + d$time_upper) / 2
 

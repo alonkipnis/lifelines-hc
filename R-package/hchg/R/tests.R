@@ -4,7 +4,7 @@
 .permutation_pvalue <- function(durations_A, durations_B,
                                 event_observed_A, event_observed_B,
                                 observed_stat, n_permutations, method,
-                                alternative, gamma, stbl, t_0,
+                                alternative, gamma, stbl, normalization, t_0,
                                 n_intervals_to_pool) {
   nA <- length(durations_A)
   all_dur <- c(as.numeric(durations_A), as.numeric(durations_B))
@@ -23,7 +23,8 @@
                                   all_evt[iA], all_evt[iB],
                                   t_0, n_intervals_to_pool)
     perm_stats[i] <- .stat_from_counts(cnt$Nt1, cnt$Nt2, cnt$Ot1, cnt$Ot2,
-                                       method, alternative, gamma, stbl)
+                                       method, alternative, gamma, stbl,
+                                       normalization)
   }
   list(p_value = (sum(perm_stats >= observed_stat) + 1) / (n_permutations + 1),
        perm_stats = perm_stats)
@@ -31,9 +32,10 @@
 
 .run_test <- function(durations_A, durations_B, event_observed_A,
                       event_observed_B, method, test_name, alternative,
-                      gamma, stbl, t_0, n_intervals_to_pool, n_permutations,
-                      seed, data_name) {
+                      gamma, stbl, normalization, t_0, n_intervals_to_pool,
+                      n_permutations, seed, data_name) {
   alternative <- match.arg(alternative, c("both", "greater", "less"))
+  normalization <- match.arg(normalization, c("donoho-jin2008", "beta"))
   if (gamma <= 0 || gamma > 1) {
     stop("'gamma' must lie in (0, 1]", call. = FALSE)
   }
@@ -45,7 +47,7 @@
                                 event_observed_A, event_observed_B,
                                 t_0, n_intervals_to_pool)
   stat <- .stat_from_counts(cnt$Nt1, cnt$Nt2, cnt$Ot1, cnt$Ot2,
-                            method, alternative, gamma, stbl)
+                            method, alternative, gamma, stbl, normalization)
 
   p_value <- NA_real_
   perm_stats <- NULL
@@ -60,7 +62,8 @@
     perm <- .permutation_pvalue(durations_A, durations_B,
                                 event_observed_A, event_observed_B,
                                 stat, n_permutations, method, alternative,
-                                gamma, stbl, t_0, n_intervals_to_pool)
+                                gamma, stbl, normalization, t_0,
+                                n_intervals_to_pool)
     p_value <- perm$p_value
     perm_stats <- perm$perm_stats
   }
@@ -81,7 +84,8 @@
     data.name = data_name,
     permutation_statistics = perm_stats,
     n_intervals_to_pool = n_intervals_to_pool,
-    stbl = stbl
+    stbl = stbl,
+    normalization = normalization
   ), class = "htest")
 }
 
@@ -102,6 +106,15 @@
 #'   Default 0.2.
 #' @param stbl Logical; use the variance-stabilised denominator. Default
 #'   \code{TRUE}.
+#' @param normalization Normalisation of the ordered p-values used by the
+#'   Higher Criticism statistic. \code{"donoho-jin2008"} (default) uses
+#'   \eqn{u_i = i/N} with denominator \eqn{\sqrt{u_i(1-u_i)/N}};
+#'   \code{"beta"} uses \eqn{u_i = i/(N+1)} with denominator
+#'   \eqn{\sqrt{u_i(1-u_i)/(N+2)}}, which is what the Python package
+#'   \code{multitest} applies by default. The choice changes the value of the
+#'   statistic and therefore the permutation p-value; it is ignored by
+#'   \code{berk_jones_test}, \code{fisher_combination_test} and
+#'   \code{min_p_test}.
 #' @param t_0 Restrict the analysis to events at or before \code{t_0}. A
 #'   negative value (default) applies no restriction.
 #' @param n_intervals_to_pool Number of equal-width intervals to pool event
@@ -146,7 +159,9 @@ higher_criticism_test <- function(durations_A, durations_B,
                                   event_observed_A = NULL,
                                   event_observed_B = NULL,
                                   alternative = c("both", "greater", "less"),
-                                  gamma = 0.2, stbl = TRUE, t_0 = -1,
+                                  gamma = 0.2, stbl = TRUE,
+                                  normalization = c("donoho-jin2008", "beta"),
+                                  t_0 = -1,
                                   n_intervals_to_pool = NULL,
                                   n_permutations = 0, seed = NULL) {
   dn <- paste(deparse(substitute(durations_A)), "and",
@@ -154,7 +169,8 @@ higher_criticism_test <- function(durations_A, durations_B,
   .run_test(durations_A, durations_B, event_observed_A, event_observed_B,
             method = "hc",
             test_name = "Higher Criticism test for non-proportional hazards",
-            alternative = alternative, gamma = gamma, stbl = stbl, t_0 = t_0,
+            alternative = alternative, gamma = gamma, stbl = stbl,
+            normalization = normalization, t_0 = t_0,
             n_intervals_to_pool = n_intervals_to_pool,
             n_permutations = n_permutations, seed = seed, data_name = dn)
 }
@@ -186,7 +202,9 @@ higher_criticism_test <- function(durations_A, durations_B,
 berk_jones_test <- function(durations_A, durations_B,
                             event_observed_A = NULL, event_observed_B = NULL,
                             alternative = c("both", "greater", "less"),
-                            gamma = 0.2, stbl = TRUE, t_0 = -1,
+                            gamma = 0.2, stbl = TRUE,
+                            normalization = c("donoho-jin2008", "beta"),
+                            t_0 = -1,
                             n_intervals_to_pool = NULL,
                             n_permutations = 0, seed = NULL) {
   dn <- paste(deparse(substitute(durations_A)), "and",
@@ -194,7 +212,8 @@ berk_jones_test <- function(durations_A, durations_B,
   .run_test(durations_A, durations_B, event_observed_A, event_observed_B,
             method = "berk_jones",
             test_name = "Berk-Jones test for non-proportional hazards",
-            alternative = alternative, gamma = gamma, stbl = stbl, t_0 = t_0,
+            alternative = alternative, gamma = gamma, stbl = stbl,
+            normalization = normalization, t_0 = t_0,
             n_intervals_to_pool = n_intervals_to_pool,
             n_permutations = n_permutations, seed = seed, data_name = dn)
 }
@@ -217,7 +236,9 @@ fisher_combination_test <- function(durations_A, durations_B,
                                     event_observed_A = NULL,
                                     event_observed_B = NULL,
                                     alternative = c("both", "greater", "less"),
-                                    gamma = 0.2, stbl = TRUE, t_0 = -1,
+                                    gamma = 0.2, stbl = TRUE,
+                                  normalization = c("donoho-jin2008", "beta"),
+                                  t_0 = -1,
                                     n_intervals_to_pool = NULL,
                                     n_permutations = 0, seed = NULL) {
   dn <- paste(deparse(substitute(durations_A)), "and",
@@ -225,7 +246,8 @@ fisher_combination_test <- function(durations_A, durations_B,
   .run_test(durations_A, durations_B, event_observed_A, event_observed_B,
             method = "fisher",
             test_name = "Fisher combination test for non-proportional hazards",
-            alternative = alternative, gamma = gamma, stbl = stbl, t_0 = t_0,
+            alternative = alternative, gamma = gamma, stbl = stbl,
+            normalization = normalization, t_0 = t_0,
             n_intervals_to_pool = n_intervals_to_pool,
             n_permutations = n_permutations, seed = seed, data_name = dn)
 }
@@ -246,15 +268,17 @@ fisher_combination_test <- function(durations_A, durations_B,
 min_p_test <- function(durations_A, durations_B,
                        event_observed_A = NULL, event_observed_B = NULL,
                        alternative = c("both", "greater", "less"),
-                       gamma = 0.2, stbl = TRUE, t_0 = -1,
-                       n_intervals_to_pool = NULL,
+                       gamma = 0.2, stbl = TRUE,
+                       normalization = c("donoho-jin2008", "beta"),
+                       t_0 = -1, n_intervals_to_pool = NULL,
                        n_permutations = 0, seed = NULL) {
   dn <- paste(deparse(substitute(durations_A)), "and",
               deparse(substitute(durations_B)))
   .run_test(durations_A, durations_B, event_observed_A, event_observed_B,
             method = "min_p",
             test_name = "Minimum-p test for non-proportional hazards",
-            alternative = alternative, gamma = gamma, stbl = stbl, t_0 = t_0,
+            alternative = alternative, gamma = gamma, stbl = stbl,
+            normalization = normalization, t_0 = t_0,
             n_intervals_to_pool = n_intervals_to_pool,
             n_permutations = n_permutations, seed = seed, data_name = dn)
 }
@@ -333,7 +357,9 @@ suspected_deviations <- function(durations_A, durations_B,
                                  event_observed_A = NULL,
                                  event_observed_B = NULL,
                                  alternative = c("greater", "less", "both"),
-                                 gamma = 0.2, stbl = TRUE, t_0 = -1,
+                                 gamma = 0.2, stbl = TRUE,
+                            normalization = c("donoho-jin2008", "beta"),
+                            t_0 = -1,
                                  n_intervals_to_pool = NULL) {
   alternative <- match.arg(alternative)
   cnt <- .survival_table_counts(durations_A, durations_B,
@@ -348,7 +374,7 @@ suspected_deviations <- function(durations_A, durations_B,
 
   usable <- pvals <= 1
   hc_thresh <- if (any(usable)) {
-    unname(.mt_hc(pvals[usable], gamma, stbl)[2L])
+    unname(.mt_hc(pvals[usable], gamma, stbl, normalization)[2L])
   } else {
     0
   }
@@ -377,7 +403,7 @@ suspected_deviations <- function(durations_A, durations_B,
     pv_rev <- .one_direction_pvals(cnt$Nt2, cnt$Nt1, cnt$Ot2, cnt$Ot1)
     usable_rev <- pv_rev <= 1
     thr_rev <- if (any(usable_rev)) {
-      unname(.mt_hc(pv_rev[usable_rev], gamma, stbl)[2L])
+      unname(.mt_hc(pv_rev[usable_rev], gamma, stbl, normalization)[2L])
     } else {
       0
     }

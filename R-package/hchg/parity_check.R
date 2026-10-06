@@ -21,8 +21,11 @@ ref$R <- NA_real_
 for (i in seq_len(nrow(ref))) {
   d <- dat[[ref$case[i]]]
   K <- if (ref$K[i] < 0) NULL else ref$K[i]
+  ## Python's multitest defaults to the beta normalisation, so parity is
+  ## checked against normalization = "beta".
   ref$R[i] <- unname(funcs[[ref$stat[i]]](d$A$t, d$B$t, d$A$e, d$B$e,
-                     alternative = ref$alt[i], n_intervals_to_pool = K)$statistic)
+                     alternative = ref$alt[i], n_intervals_to_pool = K,
+                     normalization = "beta")$statistic)
 }
 
 ## Both implementations return Inf when the exact Berk-Jones p-value underflows
@@ -59,4 +62,16 @@ for (cs in unique(pref$case)) {
 cat("\nWorst p-value difference:", format(worst_pv, scientific = TRUE), "\n")
 
 stopifnot(max(ref$rel) < 1e-10, worst_pv < 1e-12)
-cat("\nPARITY CONFIRMED.\n")
+cat("\nPARITY CONFIRMED (under normalization = \"beta\").\n")
+
+## How much the default normalisation shifts the statistic
+cat("\n=== effect of the default normalisation change ===\n")
+for (cs in unique(ref$case)) {
+  d <- dat[[cs]]
+  dj <- unname(higher_criticism_test(d$A$t, d$B$t, d$A$e, d$B$e,
+               n_intervals_to_pool = 50, normalization = "donoho-jin2008")$statistic)
+  be <- unname(higher_criticism_test(d$A$t, d$B$t, d$A$e, d$B$e,
+               n_intervals_to_pool = 50, normalization = "beta")$statistic)
+  cat(sprintf("  %-9s donoho-jin2008 = %.8f   beta = %.8f   diff = %+.2e\n",
+              cs, dj, be, dj - be))
+}
