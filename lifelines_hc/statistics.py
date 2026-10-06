@@ -180,15 +180,21 @@ def _aggregate(pvals, method, gamma, stbl):
     """Aggregate a vector of p-values into a single test statistic."""
     if len(pvals) == 0:
         return 0.0
-    mt = MultiTest(pvals, stbl=stbl)
+    mt = MultiTest(pvals)
     if method == "hc":
-        return mt.hc(gamma=gamma)[0]
+        # stbl selects the standardization of the ordered p-values:
+        #   True  -> Donoho-Jin 2008, u_i = i/N, denom sqrt(u_i(1-u_i)/N)
+        #   False -> Donoho-Jin 2004, u_i = i/N, denom sqrt(p_(i)(1-p_(i))/N)
+        # The latter is equation (2) of Kipnis, Galili and Yakhini (2026).
+        hc_fn = mt.hc_dj2008 if stbl else mt.hc_dj2004
+        return hc_fn(gamma=gamma, return_threshold=True)[0]
     if method == "berk_jones":
         return mt.berkjones(gamma=gamma)
     if method == "fisher":
         return mt.fisher()[0]
     if method == "min_p":
-        return mt.minp()
+        # renamed from minp() in multitest >= 0.2
+        return mt.neg_log_minp()
     raise ValueError(f"Unknown aggregation method: {method!r}")
 
 
@@ -597,8 +603,9 @@ def suspected_deviations(
 
     usable = pvals <= 1
     if usable.any():
-        mt = MultiTest(pvals[usable], stbl=stbl)
-        hc_score, hc_thresh = mt.hc(gamma=gamma)
+        mt = MultiTest(pvals[usable])
+        hc_fn = mt.hc_dj2008 if stbl else mt.hc_dj2004
+        hc_score, hc_thresh = hc_fn(gamma=gamma, return_threshold=True)
     else:
         hc_score, hc_thresh = 0.0, 0.0
 
@@ -631,8 +638,9 @@ def suspected_deviations(
         pvals_rev = _one_direction_pvals(Nt2, Nt1, Ot2, Ot1)
         usable_rev = pvals_rev <= 1
         if usable_rev.any():
-            mt_rev = MultiTest(pvals_rev[usable_rev], stbl=stbl)
-            _, hc_thresh_rev = mt_rev.hc(gamma=gamma)
+            mt_rev = MultiTest(pvals_rev[usable_rev])
+            hc_fn_rev = mt_rev.hc_dj2008 if stbl else mt_rev.hc_dj2004
+            _, hc_thresh_rev = hc_fn_rev(gamma=gamma, return_threshold=True)
         else:
             hc_thresh_rev = 0.0
         flagged_rev = pvals_rev <= hc_thresh_rev

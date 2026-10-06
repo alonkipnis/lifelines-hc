@@ -31,7 +31,9 @@ dependencies = [
     "numpy",
     "pandas",
     "lifelines",
-    "multiple-hypothesis-testing>=0.1.01",
+    # hc_dj2008()/hc_dj2004() are required: the HC standardization must be
+    # requested explicitly, because the default changed between releases.
+    "multiple-hypothesis-testing @ git+https://github.com/alonkipnis/multiple-hypothesis-testing@main",
     "multiHGtest>=0.0.3",
 ]
 
