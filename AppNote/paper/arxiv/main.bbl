@@ -1,4 +1,4 @@
-\begin{thebibliography}{23}
+\begin{thebibliography}{24}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -51,6 +51,14 @@ David Donoho and Jiashun Jin.
 \newblock \emph{The Annals of Statistics}, 32\penalty0 (3):\penalty0 962--994,
   2004.
 \newblock \doi{10.1214/009053604000000265}.
+
+\bibitem[Donoho and Jin(2008)]{donoho2008}
+David Donoho and Jiashun Jin.
+\newblock Higher criticism thresholding: Optimal feature selection when useful
+  features are rare and weak.
+\newblock \emph{Proceedings of the National Academy of Sciences}, 105\penalty0
+  (39):\penalty0 14790--14795, 2008.
+\newblock \doi{10.1073/pnas.0807471105}.
 
 \bibitem[Donoho and Jin(2015)]{donoho2015special}
 David~L. Donoho and Jiashun Jin.

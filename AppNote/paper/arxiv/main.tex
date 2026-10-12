@@ -184,13 +184,25 @@ HC statistic \citep{donoho2004,donoho2015special} is applied to this collection:
 \begin{equation}\label{eq:hc}
   \mathrm{HCHG}_K
   \;=\;
-  \max_{1 \leq j \leq \lfloor\gamma K\rfloor}
-  \frac{j/K - p_{(j)}}{\sqrt{p_{(j)}\!\left(1 - p_{(j)}\right)/K}},
+  \max_{1 \leq j \leq \lfloor\gamma K + 1/2\rfloor}
+  \frac{j/K - p_{(j)}}{\sqrt{(j/K)\!\left(1 - j/K\right)/K}},
 \end{equation}
 %
 where $\gamma \in (0,1)$ (default $0.2$) restricts scanning to the most
-extreme fraction of interval p-values \citep{donoho2004,donoho2015special}. A global
-p-value is obtained by permuting group labels
+extreme fraction of interval p-values \citep{donoho2004,donoho2015special}.
+The denominator in~(\ref{eq:hc}) standardises each ordered p-value by its
+null standard deviation under the uniform distribution, the form used by
+\citet{donoho2008}; this is the package default
+(\texttt{hc\_version="dj2008"}) and is used for every result reported below.
+Two alternatives are selectable through the same argument.
+\texttt{"dj2004"} replaces the denominator by
+$\sqrt{p_{(j)}(1-p_{(j)})/K}$, substituting the observed p-value for its
+null expectation, as originally proposed by \citet{donoho2004}.
+\texttt{"beta"} standardises instead by the exact mean and standard
+deviation of the $j$th order statistic of $K$ uniforms, $u_j = j/(K+1)$ and
+$\sqrt{u_j(1-u_j)/(K+2)}$. The three agree asymptotically and differ by
+$O(K^{-1})$ in finite samples; the choice matters most when $K$ is small.
+A global p-value is obtained by permuting group labels
 ($n_\mathrm{perms} = 2000$ in the analyses reported here). For the two-sided alternative,
 the minimum of the two one-sided interval p-values replaces $p_k$
 in~(\ref{eq:hc}).
@@ -208,7 +220,7 @@ result = higher_criticism_test(
     T_A, T_B,
     event_observed_A=E_A, event_observed_B=E_B,
     n_intervals_to_pool=100, n_permutations=2000,
-    alternative='both', gamma=0.2, seed=42)
+    alternative='both', gamma=0.2, hc_version='dj2008', seed=42)
 
 print(result.p_value)       # permutation-calibrated p-value
 print(result.test_statistic)  # HCHG statistic value
@@ -416,7 +428,7 @@ patient data are fully public via the CRAN \texttt{timereg} package
 (dataset \texttt{csl}) and the SurvSet repository \citep{survset2022}
 (\url{https://github.com/ErikinBC/SurvSet}).
 All analysis code is available at
-\url{https://github.com/alonkipnis/lifelines-hc/tree/v0.1.2/AppNote}.
+\url{https://github.com/alonkipnis/lifelines-hc/tree/v0.1.3/AppNote}.
 
 
 % =======================================================================
@@ -446,7 +458,7 @@ and $p$-values for all four datasets analysed in the main text.
 
 All scripts live in the \texttt{AppNote/} directory of the
 \texttt{lifelines-hc} repository
-(\url{https://github.com/alonkipnis/lifelines-hc/tree/v0.1.2/AppNote}).
+(\url{https://github.com/alonkipnis/lifelines-hc/tree/v0.1.3/AppNote}).
 They require Python~${\geq}\,3.8$, \texttt{lifelines-hc}, and
 \texttt{lifelines}~${\geq}\,0.29$.
 The MaxCombo and Yang--Prentice comparisons additionally require
@@ -587,6 +599,9 @@ Unless noted otherwise, HCHG uses:
   \item two-sided interval hypergeometric $p$-values
         (\texttt{alternative='both'});
   \item HC fraction $\gamma = 0.2$;
+  \item the Donoho--Jin 2008 standardisation of the ordered interval
+        $p$-values (\texttt{hc\_version='dj2008'}), which is the package
+        default; and
   \item label-permutation $p$-values with the random seed fixed at 42.
 \end{itemize}
 

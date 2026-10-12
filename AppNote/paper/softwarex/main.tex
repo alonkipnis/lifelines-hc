@@ -99,11 +99,11 @@ signal detection; non-proportional hazards; hypergeometric test; Python.
 \toprule
 \textbf{Nr.} & \textbf{Code metadata description} & \textbf{Value} \\
 \midrule
-C1 & Current code version & v0.1.2 \\[2pt]
+C1 & Current code version & v0.1.3 \\[2pt]
 C2 & Permanent link to code/repository used for this code version &
-     \url{https://github.com/alonkipnis/lifelines-hc/tree/v0.1.2} \\[2pt]
+     \url{https://github.com/alonkipnis/lifelines-hc/tree/v0.1.3} \\[2pt]
 C3 & Permanent link to archived version &
-     \url{https://doi.org/10.5281/zenodo.23170282} \\[2pt]
+     \url{https://doi.org/10.5281/zenodo.23170281} \\[2pt]
 C4 & Legal code license & MIT \\[2pt]
 C5 & Code versioning system used & git \\[2pt]
 C6 & Software code languages, tools and services used &
@@ -116,7 +116,7 @@ C7 & Compilation requirements, operating environments, dependencies &
      R with \texttt{nph} and \texttt{YPmodel} for the comparator tests.
      Platform independent. \\[2pt]
 C8 & Link to developer documentation/manual &
-     \url{https://github.com/alonkipnis/lifelines-hc/blob/v0.1.2/README.md} \\[2pt]
+     \url{https://github.com/alonkipnis/lifelines-hc/blob/v0.1.3/README.md} \\[2pt]
 C9 & Support email for questions &
      \href{mailto:alon.kipnis@runi.ac.il}{alon.kipnis@runi.ac.il} \\
 \bottomrule
@@ -212,13 +212,21 @@ $p_{(1)} \leq \cdots \leq p_{(K)}$, the HC statistic
 %
 \begin{equation}\label{eq:hc}
   \mathrm{HCHG}_K \;=\;
-  \max_{1 \leq j \leq \lfloor\gamma K\rfloor}
-  \frac{j/K - p_{(j)}}{\sqrt{p_{(j)}\left(1 - p_{(j)}\right)/K}},
+  \max_{1 \leq j \leq \lfloor\gamma K + 1/2\rfloor}
+  \frac{j/K - p_{(j)}}{\sqrt{(j/K)\left(1 - j/K\right)/K}},
 \end{equation}
 %
 where $\gamma \in (0,1)$ (default $0.2$) restricts the scan to the most
-extreme fraction of interval $p$-values. A global $p$-value follows from
-permuting group labels. For the two-sided alternative, the minimum of the
+extreme fraction of interval $p$-values. The denominator standardises each
+ordered $p$-value by its null standard deviation under the uniform
+distribution \citep{donoho2008}; this is the default,
+\texttt{hc\_version="dj2008"}, and is used throughout. The
+\texttt{hc\_version} argument also selects \texttt{"dj2004"}, which
+substitutes the observed $p_{(j)}$ for its null expectation in the
+denominator \citep{donoho2004}, and \texttt{"beta"}, which uses the exact
+mean and standard deviation of the $j$th uniform order statistic. The
+variants agree asymptotically and differ by $O(K^{-1})$ in finite samples.
+A global $p$-value follows from permuting group labels. For the two-sided alternative, the minimum of the
 two one-sided interval $p$-values replaces $p_k$ in~(\ref{eq:hc}).
 
 Interval pooling is the one parameter requiring user attention. With
@@ -259,7 +267,7 @@ result = higher_criticism_test(
     T_A, T_B,
     event_observed_A=E_A, event_observed_B=E_B,
     n_intervals_to_pool=100, n_permutations=2000,
-    alternative='both', gamma=0.2, seed=42)
+    alternative='both', gamma=0.2, hc_version='dj2008', seed=42)
 
 print(result.p_value)         # permutation-calibrated p-value
 print(result.test_statistic)  # HCHG statistic
@@ -438,7 +446,7 @@ reconstructed from published Kaplan--Meier curves using the algorithm of
 patient data are public via the CRAN \texttt{timereg} package (dataset
 \texttt{csl}) and the SurvSet repository \citep{survset2022}. All analysis
 code is available at
-\url{https://github.com/alonkipnis/lifelines-hc/tree/v0.1.2/AppNote}.
+\url{https://github.com/alonkipnis/lifelines-hc/tree/v0.1.3/AppNote}.
 
 % =======================================================================
 \bibliographystyle{unsrtnat}  % elsarticle-num at submission
