@@ -212,23 +212,16 @@ $p_{(1)} \leq \cdots \leq p_{(K)}$, the HC statistic
 %
 \begin{equation}\label{eq:hc}
   \mathrm{HCHG}_K \;=\;
+  \sqrt{K}\,
   \max_{1 \leq j \leq \lfloor\gamma K + 1/2\rfloor}
-  \frac{j/K - p_{(j)}}{\sqrt{(j/K)\left(1 - j/K\right)/K}},
+  \frac{j/K - p_{(j)}}{\sqrt{t_j\left(1 - t_j\right)}},
 \end{equation}
 %
 where $\gamma \in (0,1)$ (default $0.2$) restricts the scan to the most
-extreme fraction of interval $p$-values. What is standardised is a deviation of the
-\emph{empirical} distribution function, not of a single $p$-value: at
-$p_{(j)}$ the empirical CDF equals $j/K$, with null expectation $p_{(j)}$,
-and $K$ times the empirical CDF at a fixed $t$ is $\mathrm{Binomial}(K,t)$,
-giving the scale $\sqrt{t(1-t)/K}$. Equation~(\ref{eq:hc}) evaluates it at
-$t = j/K$ \citep{donoho2008}; this is the default,
-\texttt{hc\_version="dj2008"}, and is used throughout. The
-\texttt{hc\_version} argument also selects \texttt{"dj2004"}, which
-evaluates the same scale at $t = p_{(j)}$ \citep{donoho2004}, and
-\texttt{"beta"}, which standardises the ordered $p$-value itself by the
-exact moments of its $\mathrm{Beta}(j, K+1-j)$ null distribution. The
-variants agree asymptotically and differ by $O(K^{-1})$ in finite samples.
+extreme fraction of interval $p$-values, and $t_j = j/K$ under
+\texttt{hc\_version="dj2008"} \citep{donoho2008} or $t_j = p_{(j)}$ under
+\texttt{hc\_version="dj2004"} \citep{donoho2004}. We use \texttt{"dj2008"},
+the package default, throughout.
 A global $p$-value follows from permuting group labels. For the two-sided alternative, the minimum of the
 two one-sided interval $p$-values replaces $p_k$ in~(\ref{eq:hc}).
 

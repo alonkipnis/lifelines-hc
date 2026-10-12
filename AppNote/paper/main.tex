@@ -217,28 +217,16 @@ HC statistic \citep{donoho2004,donoho2015special} is applied to this collection:
 \begin{equation}\label{eq:hc}
   \mathrm{HCHG}_K
   \;=\;
+  \sqrt{K}\,
   \max_{1 \leq j \leq \lfloor\gamma K + 1/2\rfloor}
-  \frac{j/K - p_{(j)}}{\sqrt{(j/K)\!\left(1 - j/K\right)/K}},
+  \frac{j/K - p_{(j)}}{\sqrt{t_j\!\left(1 - t_j\right)}},
 \end{equation}
 %
 where $\gamma \in (0,1)$ (default $0.2$) restricts scanning to the most
-extreme fraction of interval p-values \citep{donoho2004,donoho2015special}.
-The quantity being standardised in~(\ref{eq:hc}) is a deviation of the
-\emph{empirical} distribution function of the interval p-values, not of a
-single p-value: at $p_{(j)}$ the empirical CDF equals $j/K$, whose null
-expectation is $p_{(j)}$ itself. Under the null, $K$ times the empirical CDF
-at a fixed point $t$ is $\mathrm{Binomial}(K,t)$, so the matching scale is
-$\sqrt{t(1-t)/K}$. Equation~(\ref{eq:hc}) evaluates it at $t = j/K$, the form
-used by \citet{donoho2008}; this is the package default
-(\texttt{hc\_version="dj2008"}) and is used for every result reported below.
-Two alternatives are selectable through the same argument.
-\texttt{"dj2004"} evaluates the same standard deviation at $t = p_{(j)}$,
-giving the denominator $\sqrt{p_{(j)}(1-p_{(j)})/K}$ originally proposed by
-\citet{donoho2004}. \texttt{"beta"} standardises a different quantity, the
-ordered p-value itself: under the null $p_{(j)} \sim \mathrm{Beta}(j, K+1-j)$,
-so its exact mean and standard deviation are $u_j = j/(K+1)$ and
-$\sqrt{u_j(1-u_j)/(K+2)}$. The three agree asymptotically and differ by
-$O(K^{-1})$ in finite samples; the choice matters most when $K$ is small.
+extreme fraction of interval p-values \citep{donoho2004,donoho2015special},
+and $t_j = j/K$ under \texttt{hc\_version="dj2008"} \citep{donoho2008} or
+$t_j = p_{(j)}$ under \texttt{hc\_version="dj2004"} \citep{donoho2004}. We
+use \texttt{"dj2008"}, the package default, throughout.
 A global p-value is obtained by permuting group labels
 ($n_\mathrm{perms} = 2000$ in the analyses reported here). For the two-sided alternative,
 the minimum of the two one-sided interval p-values replaces $p_k$
