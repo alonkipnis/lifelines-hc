@@ -1,4 +1,4 @@
-Package: hchg
+Package: survHC
 Type: Package
 Title: Higher Criticism Tests for Non-Proportional Hazard Deviations
 Version: 0.1.0

@@ -1,10 +1,10 @@
-## Numerical parity: R port (hchg) vs the reference Python implementation
+## Numerical parity: R port (survHC) vs the reference Python implementation
 ## (lifelines-hc). Reference values were produced by the Python package on the
 ## same input files and exported as CSV.
 ##
-## Run after installing hchg:  Rscript parity_check.R
+## Run after installing survHC:  Rscript parity_check.R
 
-library(hchg)
+library(survHC)
 dir <- "/mnt/user-data/uploads/lifelines-hc/.parity_tmp"
 
 ref <- read.csv(file.path(dir, "python_stats.csv"), stringsAsFactors = FALSE)

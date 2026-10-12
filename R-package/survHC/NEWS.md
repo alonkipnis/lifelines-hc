@@ -1,4 +1,4 @@
-# hchg 0.1.0
+# survHC 0.1.0
 
 * First release: an R port of the Python package `lifelines-hc`.
 * `higher_criticism_test()`, `berk_jones_test()`, `fisher_combination_test()`

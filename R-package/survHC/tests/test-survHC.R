@@ -1,7 +1,7 @@
 ## Base-R test suite (no testthat dependency).
 ## Any stopifnot() failure aborts R CMD check with a non-zero status.
 
-library(hchg)
+library(survHC)
 
 ok <- function(label, expr) {
   stopifnot(isTRUE(expr))
@@ -118,10 +118,10 @@ N <- length(pv); spv <- sort(pv); EPS <- 1 / (1e4 + N^2)
 uu <- seq_len(N) / N; uu[N] <- uu[N] - EPS
 imax <- as.integer(0.2 * N + 0.5)
 ok("dj2008 matches its closed form",
-   isTRUE(all.equal(unname(hchg:::.mt_hc(pv, 0.2, "dj2008")[1]),
+   isTRUE(all.equal(unname(survHC:::.mt_hc(pv, 0.2, "dj2008")[1]),
                     max(((uu - spv) / sqrt(uu * (1 - uu) / N))[seq_len(imax)]))))
 ok("dj2004 matches its closed form (paper eq. 2)",
-   isTRUE(all.equal(unname(hchg:::.mt_hc(pv, 0.2, "dj2004")[1]),
+   isTRUE(all.equal(unname(survHC:::.mt_hc(pv, 0.2, "dj2004")[1]),
                     max(((uu - spv) / sqrt(spv * (1 - spv) / N))[seq_len(imax)]))))
 
 ## ------------------------------------------------------------ diagnostics
