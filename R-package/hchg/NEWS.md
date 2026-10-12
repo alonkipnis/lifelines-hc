@@ -7,7 +7,9 @@
   hypergeometric p-values and the intervals flagged by the Higher Criticism
   threshold.
 * `plot_pvalue_profile()` draws the signed per-interval p-value profile.
-* `normalization` selects the Higher Criticism normalisation:
-  `"donoho-jin2008"` (default, u_i = i/N) or `"beta"` (u_i = i/(N+1)), the
-  latter reproducing the default of the Python `multitest` package.
+* `hc_version` selects the Higher Criticism variant: `"dj2008"` (default),
+  `"dj2004"` (equation (2) of the paper), `"beta"` or `"star"`. The names and
+  the default match the `hc_version` argument of `lifelines-hc` and the named
+  methods of the Python `multitest` package (>= 0.2.2); all four agree with it
+  to machine precision.
 * No dependencies beyond base R, `stats` and `graphics`.

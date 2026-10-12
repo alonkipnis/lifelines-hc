@@ -10,8 +10,7 @@ min_p_test(
   event_observed_B = NULL,
   alternative = c("both", "greater", "less"),
   gamma = 0.2,
-  stbl = TRUE,
-  normalization = c("donoho-jin2008", "beta"),
+  hc_version = c("dj2008", "dj2004", "beta", "star"),
   t_0 = -1,
   n_intervals_to_pool = NULL,
   n_permutations = 0,
@@ -30,17 +29,17 @@ hazard in group B) or \code{"less"} (excess hazard in group A).}
 \item{gamma}{Fraction of the smallest ordered p-values scanned, in (0, 1].
 Default 0.2.}
 
-\item{stbl}{Logical; use the variance-stabilised denominator. Default
-\code{TRUE}.}
-
-\item{normalization}{Normalisation of the ordered p-values used by the Higher
-Criticism statistic. \code{"donoho-jin2008"} (default) uses \eqn{u_i = i/N}
-with denominator \eqn{\sqrt{u_i(1-u_i)/N}}; \code{"beta"} uses
-\eqn{u_i = i/(N+1)} with denominator \eqn{\sqrt{u_i(1-u_i)/(N+2)}}, which is
-what the Python package \code{multitest} applies by default. The choice changes
-the value of the statistic and therefore the permutation p-value; it is ignored
-by \code{berk_jones_test}, \code{fisher_combination_test} and
-\code{min_p_test}.}
+\item{hc_version}{Which Higher Criticism variant to use, matching the named
+methods of the Python package \code{multitest} (>= 0.2.2) and the
+\code{hc_version} argument of \code{lifelines-hc}. \code{"dj2008"} (default)
+uses \eqn{u_i = i/N} with denominator \eqn{\sqrt{u_i(1-u_i)/N}};
+\code{"dj2004"} uses \eqn{u_i = i/N} with denominator
+\eqn{\sqrt{p_{(i)}(1-p_{(i)})/N}}, which is equation (2) of Kipnis, Galili and
+Yakhini (2026); \code{"beta"} uses \eqn{u_i = i/(N+1)} with denominator
+\eqn{\sqrt{u_i(1-u_i)/(N+2)}}; \code{"star"} uses the \code{"beta"}
+denominator but starts the scan at the first ordered p-value exceeding
+\eqn{(1-\epsilon)/N}. Ignored by \code{berk_jones_test},
+\code{fisher_combination_test} and \code{min_p_test}.}
 
 \item{t_0}{Restrict the analysis to events at or before \code{t_0}. A negative
 value (default) applies no restriction.}

@@ -97,34 +97,32 @@ n1 <- length(event_pvalues(a, b, alternative = "greater", n_intervals_to_pool = 
 n2 <- length(event_pvalues(a, b, alternative = "greater", n_intervals_to_pool = 60))
 ok("pooling controls the number of intervals", n1 <= 20 && n2 <= 60 && n2 > n1)
 
-## --------------------------------------------------------- normalisation
+## --------------------------------------------------------- HC variants
 
-hc_dj <- higher_criticism_test(a, b, n_intervals_to_pool = 40,
-                               normalization = "donoho-jin2008")$statistic
-hc_beta <- higher_criticism_test(a, b, n_intervals_to_pool = 40,
-                                 normalization = "beta")$statistic
-ok("both normalisations give finite statistics",
-   is.finite(unname(hc_dj)) && is.finite(unname(hc_beta)))
-ok("donoho-jin2008 is the default",
-   isTRUE(all.equal(unname(hc_dj),
+vals <- sapply(c("dj2008","dj2004","beta","star"), function(v)
+  unname(higher_criticism_test(a, b, n_intervals_to_pool = 40, hc_version = v)$statistic))
+ok("all four hc_version values give finite statistics", all(is.finite(vals)))
+ok("dj2008 is the default",
+   isTRUE(all.equal(unname(vals[["dj2008"]]),
      unname(higher_criticism_test(a, b, n_intervals_to_pool = 40)$statistic))))
-ok("the two normalisations differ", !isTRUE(all.equal(unname(hc_dj), unname(hc_beta))))
-ok("normalisation is recorded on the result",
-   identical(higher_criticism_test(a, b, n_intervals_to_pool = 40)$normalization,
-             "donoho-jin2008"))
-ok("rejects an unknown normalisation",
-   inherits(try(higher_criticism_test(a, b, normalization = "nope"),
-                silent = TRUE), "try-error"))
+ok("the variants are not all identical", length(unique(round(vals, 10))) > 1)
+ok("hc_version is recorded on the result",
+   identical(higher_criticism_test(a, b, n_intervals_to_pool = 40)$hc_version, "dj2008"))
+ok("rejects an unknown hc_version",
+   inherits(try(higher_criticism_test(a, b, hc_version = "nope"), silent = TRUE),
+            "try-error"))
 
-## direct check of the donoho-jin2008 formula on a known p-value vector
+## closed-form checks of the two Donoho-Jin definitions
 pv <- c(0.001, 0.02, 0.3, 0.4, 0.55, 0.6, 0.7, 0.8, 0.9, 0.95)
-N <- length(pv); uu <- seq_len(N) / N
-uu[N] <- uu[N] - 1 / (1e4 + N^2)
-zz <- (uu - sort(pv)) / sqrt(uu * (1 - uu) / N)
-expected <- max(zz[seq_len(as.integer(0.2 * N + 0.5))])
-ok("HC matches the closed-form donoho-jin2008 definition",
-   isTRUE(all.equal(unname(hchg:::.mt_hc(pv, 0.2, TRUE, "donoho-jin2008")[1]),
-                    expected)))
+N <- length(pv); spv <- sort(pv); EPS <- 1 / (1e4 + N^2)
+uu <- seq_len(N) / N; uu[N] <- uu[N] - EPS
+imax <- as.integer(0.2 * N + 0.5)
+ok("dj2008 matches its closed form",
+   isTRUE(all.equal(unname(hchg:::.mt_hc(pv, 0.2, "dj2008")[1]),
+                    max(((uu - spv) / sqrt(uu * (1 - uu) / N))[seq_len(imax)]))))
+ok("dj2004 matches its closed form (paper eq. 2)",
+   isTRUE(all.equal(unname(hchg:::.mt_hc(pv, 0.2, "dj2004")[1]),
+                    max(((uu - spv) / sqrt(spv * (1 - spv) / N))[seq_len(imax)]))))
 
 ## ------------------------------------------------------------ diagnostics
 

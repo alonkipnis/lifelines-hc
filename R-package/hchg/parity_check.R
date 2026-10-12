@@ -63,13 +63,12 @@ stopifnot(max(ref$rel) < 1e-10, worst_pv < 1e-12)
 cat("\nPARITY CONFIRMED (default normalization, donoho-jin2008).\n")
 
 ## Size of the gap to the other standardisation, for reference
-cat("\n=== donoho-jin2008 (default) vs beta ===\n")
+cat("\n=== hc_version variants ===\n")
 for (cs in unique(ref$case)) {
   d <- dat[[cs]]
-  dj <- unname(higher_criticism_test(d$A$t, d$B$t, d$A$e, d$B$e,
-               n_intervals_to_pool = 50, normalization = "donoho-jin2008")$statistic)
-  be <- unname(higher_criticism_test(d$A$t, d$B$t, d$A$e, d$B$e,
-               n_intervals_to_pool = 50, normalization = "beta")$statistic)
-  cat(sprintf("  %-9s donoho-jin2008 = %.8f   beta = %.8f   diff = %+.2e\n",
-              cs, dj, be, dj - be))
+  v <- sapply(c("dj2008", "dj2004", "beta", "star"), function(hv)
+    unname(higher_criticism_test(d$A$t, d$B$t, d$A$e, d$B$e,
+           n_intervals_to_pool = 50, hc_version = hv)$statistic))
+  cat(sprintf("  %-9s dj2008=%.6f  dj2004=%.6f  beta=%.6f  star=%.6f\n",
+              cs, v[["dj2008"]], v[["dj2004"]], v[["beta"]], v[["star"]]))
 }

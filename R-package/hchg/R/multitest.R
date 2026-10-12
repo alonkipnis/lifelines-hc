@@ -1,64 +1,81 @@
 ## Aggregation statistics for a vector of p-values.
 ##
-## Two normalisations of the ordered p-values are supported.
+## The Higher Criticism variants mirror the named methods of the Python
+## package 'multitest' (>= 0.2.2), so that hc_version here and hc_version in
+## 'lifelines-hc' select the same statistic.
 ##
-## "donoho-jin2008" (default) is the classical Higher Criticism normalisation:
+##   "dj2008" (default)  u_i = i/N,       denom = sqrt(u_i (1 - u_i) / N)
+##   "dj2004"            u_i = i/N,       denom = sqrt(p_(i) (1 - p_(i)) / N)
+##   "beta"              u_i = i/(N + 1), denom = sqrt(u_i (1 - u_i) / (N + 2))
+##   "star"              beta denominator, but the scan starts at the first
+##                       ordered p-value exceeding (1 - EPS)/N
 ##
-##     u_i   = i / N
-##     denom = sqrt(u_i (1 - u_i) / N)      (stbl = TRUE)
-##     HC_i  = (u_i - p_(i)) / denom
-##           = sqrt(N) (i/N - p_(i)) / sqrt((i/N)(1 - i/N))
+## In every case HC_i = (u_i - p_(i)) / denom and the statistic is the maximum
+## over the scanned range.
 ##
-## The largest u_i equals 1, which would make the denominator vanish, so it is
-## pulled back by EPS = 1 / (1e4 + N^2) exactly as in the Python 'multitest'
-## package. With gamma <= 1 - 1/N the affected index is never the maximiser.
+## "dj2004" is equation (2) of Kipnis, Galili and Yakhini (2026). "dj2008" is
+## the classical Donoho-Jin normalisation and the default throughout.
 ##
-## "beta" matches the mean and standard deviation of the ordered p-values:
-##
-##     u_i   = i / (N + 1)
-##     denom = sqrt(u_i (1 - u_i) / (N + 2))
-##
-## With stbl = FALSE the denominator is sqrt(p_(i) (1 - p_(i))) under either
-## normalisation, which drops the sqrt(N) scaling; this mirrors the Python
-## implementation rather than correcting it.
-##
-## Note: the Python package 'multitest' (0.2.1) defaults to "beta", and its
-## own "donoho-jin2008" branch builds a constant vector rather than i/N. The
-## "beta" option here reproduces that package's default exactly; see
-## parity_check.R.
+## For "dj2008" and "dj2004" the largest u_i equals 1, which would make the
+## denominator vanish, so it is pulled back by EPS = 1 / (1e4 + N^2) exactly as
+## in the Python implementation.
 
-.mt_prepare <- function(pvals, stbl = TRUE,
-                        normalization = c("donoho-jin2008", "beta")) {
-  normalization <- match.arg(normalization)
+.HC_VERSIONS <- c("dj2008", "dj2004", "beta", "star")
+
+.mt_prepare <- function(pvals, hc_version = "dj2008") {
   N <- length(pvals)
   if (N == 0L) stop("'pvals' must be non-empty", call. = FALSE)
   spv <- sort(as.numeric(pvals))
+  EPS <- 1 / (1e4 + N^2)
 
-  if (normalization == "donoho-jin2008") {
+  if (hc_version %in% c("dj2008", "dj2004")) {
     uu <- seq_len(N) / N
-    uu[N] <- uu[N] - 1 / (1e4 + N^2)   # keep the last denominator positive
-    std <- sqrt(uu * (1 - uu) / N)
-  } else {
+    uu[N] <- uu[N] - EPS
+    std <- if (hc_version == "dj2008") {
+      sqrt(uu * (1 - uu) / N)
+    } else {
+      sqrt(spv * (1 - spv) / N)
+    }
+  } else {                       # "beta" and "star" share the standardisation
     uu <- seq(1 / (N + 1), 1 - 1 / (N + 1), length.out = N)
     std <- sqrt(uu * (1 - uu) / (N + 2))
   }
 
-  denom <- if (stbl) std else sqrt(spv * (1 - spv))
-  list(N = N, spv = spv, zz = (uu - spv) / denom)
+  list(N = N, spv = spv, zz = (uu - spv) / std, EPS = EPS)
 }
 
 ## Higher Criticism statistic and the p-value threshold attaining it.
-.mt_hc <- function(pvals, gamma = .DEFAULT_GAMMA, stbl = TRUE,
-                   normalization = "donoho-jin2008") {
-  mt <- .mt_prepare(pvals, stbl, normalization)
-  imax <- max(0L, as.integer(gamma * mt$N + 0.5))
-  istar <- if (imax <= 0L) 1L else which.max(mt$zz[seq_len(imax)])
-  c(score = mt$zz[istar], threshold = mt$spv[istar])
+##
+## Index bookkeeping follows the Python implementation, which scans the
+## half-open range [imin, imax) over zero-based indices.
+.mt_hc <- function(pvals, gamma = .DEFAULT_GAMMA, hc_version = "dj2008") {
+  mt <- .mt_prepare(pvals, hc_version)
+  N <- mt$N
+
+  if (hc_version == "star") {
+    gt <- mt$spv > (1 - mt$EPS) / N
+    imin <- if (any(gt)) which(gt)[1L] - 1L else 0L
+    imax <- max(imin + 1L, as.integer(floor(gamma * N + 0.5)))
+  } else {
+    imin <- 0L
+    imax <- max(imin, as.integer(gamma * N + 0.5))
+  }
+  imax <- min(imax, N)
+
+  if (imin > imax) return(c(score = NA_real_, threshold = NA_real_))
+  istar <- if (imin == imax) {
+    imin
+  } else {
+    imin + which.max(mt$zz[(imin + 1L):imax]) - 1L
+  }
+
+  i <- istar + 1L
+  c(score = mt$zz[i], threshold = mt$spv[i])
 }
 
 ## Exact Berk-Jones statistic, returned as -log(BJ) so that large values are
 ## significant. Follows Moscovich, Nadler and Spiegelman (2016). Independent
-## of the normalisation above.
+## of hc_version.
 .mt_berkjones <- function(pvals, gamma = .DEFAULT_GAMMA) {
   N <- length(pvals)
   if (N == 0L) return(NA_real_)
@@ -76,10 +93,10 @@
 ## Bonferroni-type statistic, -log(min p).
 .mt_minp <- function(pvals) -log(min(as.numeric(pvals)))
 
-.aggregate <- function(pvals, method, gamma, stbl, normalization) {
+.aggregate <- function(pvals, method, gamma, hc_version) {
   if (!length(pvals)) return(0)
   switch(method,
-    hc         = unname(.mt_hc(pvals, gamma, stbl, normalization)[1L]),
+    hc         = unname(.mt_hc(pvals, gamma, hc_version)[1L]),
     berk_jones = .mt_berkjones(pvals, gamma),
     fisher     = .mt_fisher(pvals),
     min_p      = .mt_minp(pvals),
@@ -89,13 +106,13 @@
 
 ## Aggregated statistic from survival-table counts, honouring 'alternative'.
 .stat_from_counts <- function(Nt1, Nt2, Ot1, Ot2, method, alternative,
-                              gamma, stbl, normalization) {
+                              gamma, hc_version) {
   if (!length(Nt1)) return(0)
   if (alternative == "both") {
     g <- .aggregate(.one_direction_pvals(Nt1, Nt2, Ot1, Ot2),
-                    method, gamma, stbl, normalization)
+                    method, gamma, hc_version)
     l <- .aggregate(.one_direction_pvals(Nt2, Nt1, Ot2, Ot1),
-                    method, gamma, stbl, normalization)
+                    method, gamma, hc_version)
     return(max(g, l))
   }
   pv <- if (alternative == "greater") {
@@ -103,5 +120,5 @@
   } else {
     .one_direction_pvals(Nt2, Nt1, Ot2, Ot1)
   }
-  .aggregate(pv, method, gamma, stbl, normalization)
+  .aggregate(pv, method, gamma, hc_version)
 }
