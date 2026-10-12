@@ -66,6 +66,15 @@ T_B <- c(rexp(250, 1 / 10), rexp(50, 1 / 2))
 d <- suspected_deviations(T_A, T_B, n_intervals_to_pool = 50)
 head(d[d$suspected, ])
 }
+\references{
+Kipnis, A., Galili, B. and Yakhini, Z. (2026). Higher criticism for rare and
+weak non-proportional hazard deviations in survival analysis.
+\emph{Biometrika} \bold{113}(1), asaf075. \doi{10.1093/biomet/asaf075}
+
+Kipnis, A., Galili, B. and Yakhini, Z. (2026). \code{lifelines-hc}: Higher
+Criticism testing for sparse non-proportional hazard departures in Python.
+\doi{10.48550/arXiv.2610.07268}
+}
 \seealso{
 \code{\link{higher_criticism_test}}, \code{\link{plot_pvalue_profile}}
 }

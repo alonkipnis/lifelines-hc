@@ -1,0 +1,45 @@
+citHeader(
+  "To cite hchg in publications, please cite the method paper. If the software",
+  "itself is relevant, cite the Application Note as well."
+)
+
+bibentry(
+  bibtype  = "Article",
+  title    = paste("Higher criticism for rare and weak non-proportional",
+                   "hazard deviations in survival analysis"),
+  author   = c(person("Alon", "Kipnis"),
+               person("Ben", "Galili"),
+               person("Zohar", "Yakhini")),
+  journal  = "Biometrika",
+  year     = "2026",
+  volume   = "113",
+  number   = "1",
+  pages    = "asaf075",
+  doi      = "10.1093/biomet/asaf075",
+  textVersion = paste(
+    "Kipnis, A., Galili, B. and Yakhini, Z. (2026).",
+    "Higher criticism for rare and weak non-proportional hazard deviations",
+    "in survival analysis. Biometrika 113(1), asaf075.",
+    "doi:10.1093/biomet/asaf075"
+  )
+)
+
+bibentry(
+  bibtype  = "Misc",
+  title    = paste("lifelines-hc: Higher Criticism testing for sparse",
+                   "non-proportional hazard departures in Python"),
+  author   = c(person("Alon", "Kipnis"),
+               person("Ben", "Galili"),
+               person("Zohar", "Yakhini")),
+  year     = "2026",
+  eprint   = "2610.07268",
+  archivePrefix = "arXiv",
+  primaryClass  = "stat.ME",
+  doi      = "10.48550/arXiv.2610.07268",
+  textVersion = paste(
+    "Kipnis, A., Galili, B. and Yakhini, Z. (2026).",
+    "lifelines-hc: Higher Criticism testing for sparse non-proportional",
+    "hazard departures in Python. arXiv:2610.07268 [stat.ME].",
+    "doi:10.48550/arXiv.2610.07268"
+  )
+)

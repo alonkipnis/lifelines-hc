@@ -70,6 +70,15 @@ implementation.
 set.seed(1)
 berk_jones_test(rexp(200, 1 / 10), rexp(200, 1 / 10), n_intervals_to_pool = 50)
 }
+\references{
+Moscovich, A., Nadler, B. and Spiegelman, C. (2016). On the exact Berk-Jones
+statistics and their p-value calculation. \emph{Electronic Journal of
+Statistics} \bold{10}(2), 2329--2354.
+
+Kipnis, A., Galili, B. and Yakhini, Z. (2026). Higher criticism for rare and
+weak non-proportional hazard deviations in survival analysis.
+\emph{Biometrika} \bold{113}(1), asaf075. \doi{10.1093/biomet/asaf075}
+}
 \seealso{
 \code{\link{higher_criticism_test}}
 }

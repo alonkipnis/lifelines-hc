@@ -86,6 +86,10 @@ weak non-proportional hazard deviations in survival analysis.
 Donoho, D. and Jin, J. (2004). Higher criticism for detecting sparse
 heterogeneous mixtures. \emph{The Annals of Statistics} \bold{32}(3),
 962--994. \doi{10.1214/009053604000000265}
+
+Kipnis, A., Galili, B. and Yakhini, Z. (2026). \code{lifelines-hc}: Higher
+Criticism testing for sparse non-proportional hazard departures in Python.
+\doi{10.48550/arXiv.2610.07268}
 }
 \seealso{
 \code{\link{suspected_deviations}} to recover the intervals driving a

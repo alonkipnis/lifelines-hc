@@ -16,7 +16,9 @@ Description: Omnibus tests for comparing two right-censored survival samples
     Berk-Jones, Fisher or minimum-p statistics. Global p-values are obtained by
     permuting group labels, and the intervals driving a detection can be
     recovered for diagnostic plotting. The method is described in Kipnis,
-    Galili and Yakhini (2026) <doi:10.1093/biomet/asaf075>.
+    Galili and Yakhini (2026) <doi:10.1093/biomet/asaf075>, and the companion
+    Application Note is Kipnis, Galili and Yakhini (2026)
+    <doi:10.48550/arXiv.2610.07268>.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Depends: R (>= 3.5.0)
