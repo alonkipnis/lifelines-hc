@@ -22,7 +22,7 @@ identifiers:
     description: Concept DOI, always resolves to the latest version
   - type: doi
     value: 10.5281/zenodo.23170282
-    description: Version DOI for v0.1.3
+    description: Version DOI for v0.1.2
 keywords:
   - survival analysis
   - higher criticism
@@ -67,3 +67,18 @@ references:
     start: asaf075
     year: 2026
     doi: 10.1093/biomet/asaf075
+  - type: article
+    title: >-
+      lifelines-hc: Higher Criticism testing for sparse non-proportional
+      hazard departures in Python
+    authors:
+      - family-names: Kipnis
+        given-names: Alon
+      - family-names: Galili
+        given-names: Ben
+      - family-names: Yakhini
+        given-names: Zohar
+    year: 2026
+    doi: 10.48550/arXiv.2610.07268
+    url: "https://arxiv.org/abs/2610.07268"
+    notes: "Application Note describing this software"

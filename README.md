@@ -21,6 +21,12 @@ classical log-rank test has little power.
 > *Biometrika*, 113(1), asaf075. [doi:10.1093/biomet/asaf075](https://doi.org/10.1093/biomet/asaf075)
 > · [arXiv:2310.00554](https://arxiv.org/abs/2310.00554)
 
+**Application Note.** The software is described in:
+
+> Kipnis, A., Galili, B., and Yakhini, Z. (2026). *lifelines-hc*: Higher
+> Criticism testing for sparse non-proportional hazard departures in Python.
+> [arXiv:2610.07268](https://arxiv.org/abs/2610.07268)
+
 **Software.** To cite the package itself:
 
 > Kipnis, A. (2026). *lifelines-hc* [Computer software]. Zenodo.
