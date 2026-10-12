@@ -7,6 +7,15 @@
   hypergeometric p-values and the intervals flagged by the Higher Criticism
   threshold.
 * `plot_pvalue_profile()` draws the signed per-interval p-value profile.
+* Every entry point is an S3 generic and accepts either two samples as vectors
+  or the usual survival formula, `Surv(time, status) ~ group`, with `data`,
+  `subset` and `na.action`. `cbind(time, status) ~ group` and `time ~ group`
+  work without `survival` attached, the latter treating every observation as an
+  event. The first level of the grouping variable is group A, so
+  `alternative = "greater"` tests for excess hazard in the second level. The
+  two interfaces are tested to return bit-identical statistics and p-values;
+  they differ only in that the formula method applies `na.action` to incomplete
+  rows, where the vector interface rejects them.
 * `hc_version` selects the Higher Criticism variant: `"dj2008"` (default),
   `"dj2004"` (equation (2) of the paper), `"beta"` or `"star"`. The names and
   the default match the `hc_version` argument of `lifelines-hc` and the named

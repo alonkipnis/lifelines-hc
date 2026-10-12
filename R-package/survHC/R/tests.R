@@ -1,5 +1,10 @@
 ## Public API: the four omnibus tests, the per-interval p-values, and the
 ## interval-level diagnostic table.
+##
+## Each is an S3 generic with a "default" method taking the two samples as
+## vectors and a "formula" method taking Surv(time, status) ~ group. The
+## formula methods do no statistics of their own; they split the data and call
+## the default method. See R/formula.R.
 
 .permutation_pvalue <- function(durations_A, durations_B,
                                 event_observed_A, event_observed_B,
@@ -96,9 +101,36 @@
 #' small and a priori unknown subset of the follow-up, a regime in which the
 #' log-rank test has little power.
 #'
+#' Two interfaces are available and return the same numbers. The default
+#' method takes the two samples as vectors, mirroring the Python package
+#' \code{lifelines-hc}. The formula method takes the usual survival formula
+#' \code{Surv(time, status) ~ group}, which needs the \pkg{survival} package
+#' for \code{Surv} itself; without it, \code{cbind(time, status) ~ group} and
+#' \code{time ~ group} also work, the latter treating every observation as an
+#' event.
+#'
+#' The grouping variable must take exactly two values. Its first level is
+#' group A and its second is group B, so \code{alternative = "greater"} tests
+#' for excess hazard in the second level. Levels are taken in factor order for
+#' a factor, and otherwise in the order \code{sort(unique(.))} gives:
+#' numerically for numbers, alphabetically for strings.
+#'
+#' The two interfaces differ only in their treatment of missing values. The
+#' default method rejects \code{NA} durations; the formula method applies
+#' \code{na.action}, which by default drops incomplete rows.
+#'
 #' @param durations_A,durations_B Numeric vectors of event or censoring times.
+#'   \code{durations_A} may instead be a \code{\link{formula}}, which selects
+#'   the formula method.
 #' @param event_observed_A,event_observed_B Optional 0/1 vectors, 1 indicating
 #'   an observed event and 0 a censored observation. Default: all events.
+#' @param formula A two-sided formula \code{Surv(time, status) ~ group}; see
+#'   Details.
+#' @param data An optional data frame, list or environment holding the
+#'   variables named in \code{formula}.
+#' @param subset An optional vector specifying a subset of observations.
+#' @param na.action A function describing what should happen when the data
+#'   contain \code{NA}s. Defaults to \code{getOption("na.action")}.
 #' @param alternative One of \code{"both"} (default), \code{"greater"} (excess
 #'   hazard in group B) or \code{"less"} (excess hazard in group A).
 #' @param gamma Fraction of the smallest ordered p-values scanned, in (0, 1].
@@ -126,10 +158,13 @@
 #'   p-value. \code{0} (default) skips calibration and returns \code{NA}.
 #' @param seed Optional integer seed for the permutation test. When supplied,
 #'   the caller's random seed is restored on exit.
+#' @param ... Further arguments passed to the default method.
 #'
 #' @return An object of class \code{"htest"}, with the Higher Criticism score
 #'   in \code{statistic} and the permutation p-value in \code{p.value}. The
-#'   permutation statistics are returned in \code{permutation_statistics}.
+#'   permutation statistics are returned in \code{permutation_statistics}. The
+#'   formula method additionally records the two group levels, in the order
+#'   (A, B), in \code{group_levels}.
 #'
 #' @references
 #' Kipnis, A., Galili, B. and Yakhini, Z. (2026). Higher criticism for rare and
@@ -154,24 +189,50 @@
 #' # with permutation calibration
 #' higher_criticism_test(T_A, T_B, n_intervals_to_pool = 50,
 #'                       n_permutations = 200, seed = 42)
+#'
+#' # the same data through the formula interface
+#' trial <- data.frame(time = c(T_A, T_B), status = 1,
+#'                     arm = rep(c("A", "B"), c(200, 200)))
+#' higher_criticism_test(cbind(time, status) ~ arm, data = trial,
+#'                       n_intervals_to_pool = 50)
+#'
+#' if (requireNamespace("survival", quietly = TRUE)) {
+#'   higher_criticism_test(survival::Surv(time, status) ~ arm, data = trial,
+#'                         n_intervals_to_pool = 50)
+#' }
 #' @export
-higher_criticism_test <- function(durations_A, durations_B,
-                                  event_observed_A = NULL,
-                                  event_observed_B = NULL,
-                                  alternative = c("both", "greater", "less"),
-                                  gamma = 0.2,
-                                  hc_version = c("dj2008", "dj2004", "beta", "star"),
-                                  t_0 = -1,
-                                  n_intervals_to_pool = NULL,
-                                  n_permutations = 0, seed = NULL) {
-  dn <- paste(deparse(substitute(durations_A)), "and",
-              deparse(substitute(durations_B)))
+higher_criticism_test <- function(durations_A, ...) {
+  UseMethod("higher_criticism_test")
+}
+
+#' @rdname higher_criticism_test
+#' @export
+higher_criticism_test.default <- function(durations_A, durations_B,
+                                          event_observed_A = NULL,
+                                          event_observed_B = NULL,
+                                          alternative = c("both", "greater", "less"),
+                                          gamma = 0.2,
+                                          hc_version = c("dj2008", "dj2004", "beta", "star"),
+                                          t_0 = -1,
+                                          n_intervals_to_pool = NULL,
+                                          n_permutations = 0, seed = NULL, ...) {
+  .reject_unused(...)
+  dn <- .data_name(substitute(durations_A), substitute(durations_B))
   .run_test(durations_A, durations_B, event_observed_A, event_observed_B,
             method = "hc",
             test_name = "Higher Criticism test for non-proportional hazards",
             alternative = alternative, gamma = gamma, hc_version = hc_version, t_0 = t_0,
             n_intervals_to_pool = n_intervals_to_pool,
             n_permutations = n_permutations, seed = seed, data_name = dn)
+}
+
+#' @rdname higher_criticism_test
+#' @export
+higher_criticism_test.formula <- function(formula, data, subset, na.action, ...) {
+  .formula_htest(higher_criticism_test.default,
+                 .formula_split(formula, match.call(expand.dots = FALSE),
+                                parent.frame(), list(...)),
+                 list(...))
 }
 
 #' Berk-Jones test for non-proportional hazard deviations
@@ -198,22 +259,37 @@ higher_criticism_test <- function(durations_A, durations_B,
 #' berk_jones_test(rexp(200, 1 / 10), rexp(200, 1 / 10),
 #'                 n_intervals_to_pool = 50)
 #' @export
-berk_jones_test <- function(durations_A, durations_B,
-                            event_observed_A = NULL, event_observed_B = NULL,
-                            alternative = c("both", "greater", "less"),
-                            gamma = 0.2,
-                                  hc_version = c("dj2008", "dj2004", "beta", "star"),
-                            t_0 = -1,
-                            n_intervals_to_pool = NULL,
-                            n_permutations = 0, seed = NULL) {
-  dn <- paste(deparse(substitute(durations_A)), "and",
-              deparse(substitute(durations_B)))
+berk_jones_test <- function(durations_A, ...) {
+  UseMethod("berk_jones_test")
+}
+
+#' @rdname berk_jones_test
+#' @export
+berk_jones_test.default <- function(durations_A, durations_B,
+                                    event_observed_A = NULL, event_observed_B = NULL,
+                                    alternative = c("both", "greater", "less"),
+                                    gamma = 0.2,
+                                    hc_version = c("dj2008", "dj2004", "beta", "star"),
+                                    t_0 = -1,
+                                    n_intervals_to_pool = NULL,
+                                    n_permutations = 0, seed = NULL, ...) {
+  .reject_unused(...)
+  dn <- .data_name(substitute(durations_A), substitute(durations_B))
   .run_test(durations_A, durations_B, event_observed_A, event_observed_B,
             method = "berk_jones",
             test_name = "Berk-Jones test for non-proportional hazards",
             alternative = alternative, gamma = gamma, hc_version = hc_version, t_0 = t_0,
             n_intervals_to_pool = n_intervals_to_pool,
             n_permutations = n_permutations, seed = seed, data_name = dn)
+}
+
+#' @rdname berk_jones_test
+#' @export
+berk_jones_test.formula <- function(formula, data, subset, na.action, ...) {
+  .formula_htest(berk_jones_test.default,
+                 .formula_split(formula, match.call(expand.dots = FALSE),
+                                parent.frame(), list(...)),
+                 list(...))
 }
 
 #' Fisher combination test for non-proportional hazard deviations
@@ -230,23 +306,38 @@ berk_jones_test <- function(durations_A, durations_B,
 #' fisher_combination_test(rexp(200, 1 / 10), rexp(200, 1 / 10),
 #'                         n_intervals_to_pool = 50)
 #' @export
-fisher_combination_test <- function(durations_A, durations_B,
-                                    event_observed_A = NULL,
-                                    event_observed_B = NULL,
-                                    alternative = c("both", "greater", "less"),
-                                    gamma = 0.2,
-                                  hc_version = c("dj2008", "dj2004", "beta", "star"),
-                                  t_0 = -1,
-                                    n_intervals_to_pool = NULL,
-                                    n_permutations = 0, seed = NULL) {
-  dn <- paste(deparse(substitute(durations_A)), "and",
-              deparse(substitute(durations_B)))
+fisher_combination_test <- function(durations_A, ...) {
+  UseMethod("fisher_combination_test")
+}
+
+#' @rdname fisher_combination_test
+#' @export
+fisher_combination_test.default <- function(durations_A, durations_B,
+                                            event_observed_A = NULL,
+                                            event_observed_B = NULL,
+                                            alternative = c("both", "greater", "less"),
+                                            gamma = 0.2,
+                                            hc_version = c("dj2008", "dj2004", "beta", "star"),
+                                            t_0 = -1,
+                                            n_intervals_to_pool = NULL,
+                                            n_permutations = 0, seed = NULL, ...) {
+  .reject_unused(...)
+  dn <- .data_name(substitute(durations_A), substitute(durations_B))
   .run_test(durations_A, durations_B, event_observed_A, event_observed_B,
             method = "fisher",
             test_name = "Fisher combination test for non-proportional hazards",
             alternative = alternative, gamma = gamma, hc_version = hc_version, t_0 = t_0,
             n_intervals_to_pool = n_intervals_to_pool,
             n_permutations = n_permutations, seed = seed, data_name = dn)
+}
+
+#' @rdname fisher_combination_test
+#' @export
+fisher_combination_test.formula <- function(formula, data, subset, na.action, ...) {
+  .formula_htest(fisher_combination_test.default,
+                 .formula_split(formula, match.call(expand.dots = FALSE),
+                                parent.frame(), list(...)),
+                 list(...))
 }
 
 #' Minimum-p test for non-proportional hazard deviations
@@ -262,21 +353,36 @@ fisher_combination_test <- function(durations_A, durations_B,
 #' set.seed(1)
 #' min_p_test(rexp(200, 1 / 10), rexp(200, 1 / 10), n_intervals_to_pool = 50)
 #' @export
-min_p_test <- function(durations_A, durations_B,
-                       event_observed_A = NULL, event_observed_B = NULL,
-                       alternative = c("both", "greater", "less"),
-                       gamma = 0.2,
-                                  hc_version = c("dj2008", "dj2004", "beta", "star"),
-                       t_0 = -1, n_intervals_to_pool = NULL,
-                       n_permutations = 0, seed = NULL) {
-  dn <- paste(deparse(substitute(durations_A)), "and",
-              deparse(substitute(durations_B)))
+min_p_test <- function(durations_A, ...) {
+  UseMethod("min_p_test")
+}
+
+#' @rdname min_p_test
+#' @export
+min_p_test.default <- function(durations_A, durations_B,
+                               event_observed_A = NULL, event_observed_B = NULL,
+                               alternative = c("both", "greater", "less"),
+                               gamma = 0.2,
+                               hc_version = c("dj2008", "dj2004", "beta", "star"),
+                               t_0 = -1, n_intervals_to_pool = NULL,
+                               n_permutations = 0, seed = NULL, ...) {
+  .reject_unused(...)
+  dn <- .data_name(substitute(durations_A), substitute(durations_B))
   .run_test(durations_A, durations_B, event_observed_A, event_observed_B,
             method = "min_p",
             test_name = "Minimum-p test for non-proportional hazards",
             alternative = alternative, gamma = gamma, hc_version = hc_version, t_0 = t_0,
             n_intervals_to_pool = n_intervals_to_pool,
             n_permutations = n_permutations, seed = seed, data_name = dn)
+}
+
+#' @rdname min_p_test
+#' @export
+min_p_test.formula <- function(formula, data, subset, na.action, ...) {
+  .formula_htest(min_p_test.default,
+                 .formula_split(formula, match.call(expand.dots = FALSE),
+                                parent.frame(), list(...)),
+                 list(...))
 }
 
 #' Per-interval hypergeometric p-values
@@ -299,10 +405,17 @@ min_p_test <- function(durations_A, durations_B,
 #'                    alternative = "greater", n_intervals_to_pool = 50)
 #' summary(p)
 #' @export
-event_pvalues <- function(durations_A, durations_B,
-                          event_observed_A = NULL, event_observed_B = NULL,
-                          alternative = c("both", "greater", "less"),
-                          t_0 = -1, n_intervals_to_pool = NULL) {
+event_pvalues <- function(durations_A, ...) {
+  UseMethod("event_pvalues")
+}
+
+#' @rdname event_pvalues
+#' @export
+event_pvalues.default <- function(durations_A, durations_B,
+                                  event_observed_A = NULL, event_observed_B = NULL,
+                                  alternative = c("both", "greater", "less"),
+                                  t_0 = -1, n_intervals_to_pool = NULL, ...) {
+  .reject_unused(...)
   alternative <- match.arg(alternative)
   cnt <- .survival_table_counts(durations_A, durations_B,
                                 event_observed_A, event_observed_B,
@@ -318,6 +431,15 @@ event_pvalues <- function(durations_A, durations_B,
   } else {
     .one_direction_pvals(cnt$Nt2, cnt$Nt1, cnt$Ot2, cnt$Ot1)
   }
+}
+
+#' @rdname event_pvalues
+#' @export
+event_pvalues.formula <- function(formula, data, subset, na.action, ...) {
+  .formula_plain(event_pvalues.default,
+                 .formula_split(formula, match.call(expand.dots = FALSE),
+                                parent.frame(), list(...)),
+                 list(...))
 }
 
 #' Intervals with suspected non-proportional hazard deviations
@@ -349,14 +471,21 @@ event_pvalues <- function(durations_A, durations_B,
 #' d <- suspected_deviations(T_A, T_B, n_intervals_to_pool = 50)
 #' head(d[d$suspected, ])
 #' @export
-suspected_deviations <- function(durations_A, durations_B,
-                                 event_observed_A = NULL,
-                                 event_observed_B = NULL,
-                                 alternative = c("greater", "less", "both"),
-                                 gamma = 0.2,
-                                 hc_version = c("dj2008", "dj2004", "beta", "star"),
-                                 t_0 = -1,
-                                 n_intervals_to_pool = NULL) {
+suspected_deviations <- function(durations_A, ...) {
+  UseMethod("suspected_deviations")
+}
+
+#' @rdname suspected_deviations
+#' @export
+suspected_deviations.default <- function(durations_A, durations_B,
+                                         event_observed_A = NULL,
+                                         event_observed_B = NULL,
+                                         alternative = c("greater", "less", "both"),
+                                         gamma = 0.2,
+                                         hc_version = c("dj2008", "dj2004", "beta", "star"),
+                                         t_0 = -1,
+                                         n_intervals_to_pool = NULL, ...) {
+  .reject_unused(...)
   alternative <- match.arg(alternative)
   hc_version <- match.arg(hc_version)
   cnt <- .survival_table_counts(durations_A, durations_B,
@@ -413,4 +542,13 @@ suspected_deviations <- function(durations_A, durations_B,
 
   rownames(out) <- NULL
   out
+}
+
+#' @rdname suspected_deviations
+#' @export
+suspected_deviations.formula <- function(formula, data, subset, na.action, ...) {
+  .formula_plain(suspected_deviations.default,
+                 .formula_split(formula, match.call(expand.dots = FALSE),
+                                parent.frame(), list(...)),
+                 list(...))
 }

@@ -1,9 +1,13 @@
 % Generated from R/tests.R
 \name{min_p_test}
 \alias{min_p_test}
+\alias{min_p_test.default}
+\alias{min_p_test.formula}
 \title{Minimum-p test for non-proportional hazard deviations}
 \usage{
-min_p_test(
+min_p_test(durations_A, ...)
+
+\method{min_p_test}{default}(
   durations_A,
   durations_B,
   event_observed_A = NULL,
@@ -14,11 +18,16 @@ min_p_test(
   t_0 = -1,
   n_intervals_to_pool = NULL,
   n_permutations = 0,
-  seed = NULL
+  seed = NULL,
+  ...
 )
+
+\method{min_p_test}{formula}(formula, data, subset, na.action, ...)
 }
 \arguments{
-\item{durations_A, durations_B}{Numeric vectors of event or censoring times.}
+\item{durations_A, durations_B}{Numeric vectors of event or censoring times.
+\code{durations_A} may instead be a \code{\link{formula}}, which selects the
+formula method.}
 
 \item{event_observed_A, event_observed_B}{Optional 0/1 vectors, 1 indicating an
 observed event and 0 a censored observation. Default: all events.}
@@ -45,24 +54,67 @@ denominator but starts the scan at the first ordered p-value exceeding
 value (default) applies no restriction.}
 
 \item{n_intervals_to_pool}{Number of equal-width intervals to pool event times
-into. Strongly recommended for continuous survival data. Values between 50 and
-200 usually work well. \code{NULL} (default) applies no pooling.}
+into. Strongly recommended for continuous survival data, where each distinct
+time carries at most one event and the per-time hypergeometric p-values are too
+coarse to be informative. Values between 50 and 200 usually work well.
+\code{NULL} (default) applies no pooling.}
 
 \item{n_permutations}{Number of label permutations used to calibrate the
 p-value. \code{0} (default) skips calibration and returns \code{NA}.}
 
 \item{seed}{Optional integer seed for the permutation test. When supplied, the
 caller's random seed is restored on exit.}
+
+\item{formula}{A two-sided formula \code{Surv(time, status) ~ group}; see
+Details.}
+
+\item{data}{An optional data frame, list or environment holding the variables
+named in \code{formula}.}
+
+\item{subset}{An optional vector specifying a subset of observations to use.}
+
+\item{na.action}{A function describing what should happen when the data contain
+\code{NA}s. Defaults to \code{getOption("na.action")}, normally
+\code{\link[stats]{na.omit}}.}
+
+\item{...}{Further arguments. The formula method passes these on to the default
+method, which accepts none and signals an error if any are supplied, so that a
+misspelled argument name cannot be silently ignored.}
 }
 \value{
 An object of class \code{"htest"}.
 }
 \description{
-Aggregates the same per-interval hypergeometric p-values as \\code{\\link{higher_criticism_test}} by taking the minimum, reported as \\eqn{-\\log(\\min_i p_i)}.
+Aggregates the same per-interval hypergeometric p-values as
+\code{\link{higher_criticism_test}} by taking the minimum, reported as
+\eqn{-\log(\min_i p_i)}.
+}
+\details{
+Two interfaces are available and return the same numbers. The default method
+takes the two samples as vectors, mirroring the Python package
+\code{lifelines-hc}. The formula method takes the usual survival formula
+\code{Surv(time, status) ~ group}, which needs the \pkg{survival} package for
+\code{Surv} itself; without it, \code{cbind(time, status) ~ group} and
+\code{time ~ group} also work, the latter treating every observation as an
+event.
+
+The grouping variable must take exactly two values. Its first level is group A
+and its second is group B, so \code{alternative = "greater"} tests for excess
+hazard in the second level. Levels are taken in factor order for a factor, and
+otherwise in the order \code{sort(unique(.))} gives: numerically for numbers,
+alphabetically for strings.
+
+The two interfaces differ only in their treatment of missing values. The
+default method rejects \code{NA} durations; the formula method applies
+\code{na.action}, which by default drops incomplete rows.
 }
 \examples{
 set.seed(1)
 min_p_test(rexp(200, 1 / 10), rexp(200, 1 / 10), n_intervals_to_pool = 50)
+
+trial <- data.frame(time = rexp(400, 1 / 10), status = 1,
+                    arm = rep(c("A", "B"), each = 200))
+min_p_test(cbind(time, status) ~ arm, data = trial, n_intervals_to_pool = 50)
 }
 \references{
 Kipnis, A., Galili, B. and Yakhini, Z. (2026). Higher criticism for rare and

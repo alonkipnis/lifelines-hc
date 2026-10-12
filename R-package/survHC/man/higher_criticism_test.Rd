@@ -1,9 +1,13 @@
 % Generated from R/tests.R
 \name{higher_criticism_test}
 \alias{higher_criticism_test}
+\alias{higher_criticism_test.default}
+\alias{higher_criticism_test.formula}
 \title{Higher Criticism test for non-proportional hazard deviations}
 \usage{
-higher_criticism_test(
+higher_criticism_test(durations_A, ...)
+
+\method{higher_criticism_test}{default}(
   durations_A,
   durations_B,
   event_observed_A = NULL,
@@ -14,11 +18,16 @@ higher_criticism_test(
   t_0 = -1,
   n_intervals_to_pool = NULL,
   n_permutations = 0,
-  seed = NULL
+  seed = NULL,
+  ...
 )
+
+\method{higher_criticism_test}{formula}(formula, data, subset, na.action, ...)
 }
 \arguments{
-\item{durations_A, durations_B}{Numeric vectors of event or censoring times.}
+\item{durations_A, durations_B}{Numeric vectors of event or censoring times.
+\code{durations_A} may instead be a \code{\link{formula}}, which selects the
+formula method.}
 
 \item{event_observed_A, event_observed_B}{Optional 0/1 vectors, 1 indicating an
 observed event and 0 a censored observation. Default: all events.}
@@ -55,11 +64,29 @@ p-value. \code{0} (default) skips calibration and returns \code{NA}.}
 
 \item{seed}{Optional integer seed for the permutation test. When supplied, the
 caller's random seed is restored on exit.}
+
+\item{formula}{A two-sided formula \code{Surv(time, status) ~ group}; see
+Details.}
+
+\item{data}{An optional data frame, list or environment holding the variables
+named in \code{formula}.}
+
+\item{subset}{An optional vector specifying a subset of observations to use.}
+
+\item{na.action}{A function describing what should happen when the data contain
+\code{NA}s. Defaults to \code{getOption("na.action")}, normally
+\code{\link[stats]{na.omit}}.}
+
+\item{...}{Further arguments. The formula method passes these on to the default
+method, which accepts none and signals an error if any are supplied, so that a
+misspelled argument name cannot be silently ignored.}
 }
 \value{
 An object of class \code{"htest"}, with the Higher Criticism score in
 \code{statistic} and the permutation p-value in \code{p.value}. The permutation
-statistics are returned in \code{permutation_statistics}.
+statistics are returned in \code{permutation_statistics}. The formula method
+additionally records the two group levels, in the order (A, B), in
+\code{group_levels}.
 }
 \description{
 Compares two right-censored survival samples using Higher Criticism applied to
@@ -67,6 +94,25 @@ exact per-interval hypergeometric p-values. The test is powerful against
 \emph{sparse} departures, where the hazard difference is concentrated in a
 small and a priori unknown subset of the follow-up, a regime in which the
 log-rank test has little power.
+}
+\details{
+Two interfaces are available and return the same numbers. The default method
+takes the two samples as vectors, mirroring the Python package
+\code{lifelines-hc}. The formula method takes the usual survival formula
+\code{Surv(time, status) ~ group}, which needs the \pkg{survival} package for
+\code{Surv} itself; without it, \code{cbind(time, status) ~ group} and
+\code{time ~ group} also work, the latter treating every observation as an
+event.
+
+The grouping variable must take exactly two values. Its first level is group A
+and its second is group B, so \code{alternative = "greater"} tests for excess
+hazard in the second level. Levels are taken in factor order for a factor, and
+otherwise in the order \code{sort(unique(.))} gives: numerically for numbers,
+alphabetically for strings.
+
+The two interfaces differ only in their treatment of missing values. The
+default method rejects \code{NA} durations; the formula method applies
+\code{na.action}, which by default drops incomplete rows.
 }
 \examples{
 set.seed(1)
@@ -77,6 +123,18 @@ higher_criticism_test(T_A, T_B, n_intervals_to_pool = 50)
 # with permutation calibration
 higher_criticism_test(T_A, T_B, n_intervals_to_pool = 50,
                       n_permutations = 200, seed = 42)
+
+# the same data through the formula interface
+trial <- data.frame(time = c(T_A, T_B), status = 1,
+                    arm = rep(c("A", "B"), c(200, 200)))
+higher_criticism_test(cbind(time, status) ~ arm, data = trial,
+                      n_intervals_to_pool = 50)
+
+# Surv() needs the survival package, which is only suggested
+if (requireNamespace("survival", quietly = TRUE)) {
+  higher_criticism_test(survival::Surv(time, status) ~ arm, data = trial,
+                        n_intervals_to_pool = 50)
+}
 }
 \references{
 Kipnis, A., Galili, B. and Yakhini, Z. (2026). Higher criticism for rare and

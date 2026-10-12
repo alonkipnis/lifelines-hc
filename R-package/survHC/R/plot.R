@@ -21,8 +21,20 @@
 #' T_A <- rexp(300, 1 / 10)
 #' T_B <- c(rexp(250, 1 / 10), rexp(50, 1 / 2))
 #' plot_pvalue_profile(T_A, T_B, n_intervals_to_pool = 50)
+#'
+#' # the same plot through the formula interface
+#' trial <- data.frame(time = c(T_A, T_B), status = 1,
+#'                     arm = rep(c("A", "B"), c(300, 300)))
+#' plot_pvalue_profile(cbind(time, status) ~ arm, data = trial,
+#'                     n_intervals_to_pool = 50)
 #' @export
-plot_pvalue_profile <- function(durations_A, durations_B,
+plot_pvalue_profile <- function(durations_A, ...) {
+  UseMethod("plot_pvalue_profile")
+}
+
+#' @rdname plot_pvalue_profile
+#' @export
+plot_pvalue_profile.default <- function(durations_A, durations_B,
                                 event_observed_A = NULL,
                                 event_observed_B = NULL,
                                 gamma = 0.2,
@@ -70,4 +82,17 @@ plot_pvalue_profile <- function(durations_A, durations_B,
                    col = c(col_flagged, col_plain), lwd = 2)
 
   invisible(d)
+}
+
+#' @rdname plot_pvalue_profile
+#' @export
+plot_pvalue_profile.formula <- function(formula, data, subset, na.action, ...) {
+  s <- .formula_split(formula, match.call(expand.dots = FALSE),
+                      parent.frame(), list(...))
+  dots <- list(...)
+  if (is.null(dots$main)) {
+    dots$main <- paste0("Per-interval hypergeometric p-values: ",
+                        s$group_levels[2L], " vs ", s$group_levels[1L])
+  }
+  invisible(.formula_plain(plot_pvalue_profile.default, s, dots))
 }

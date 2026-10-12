@@ -158,4 +158,286 @@ ok("rejects negative durations",
    inherits(try(higher_criticism_test(c(-1, 2, 3), b), silent = TRUE),
             "try-error"))
 
+## ======================================================= formula interface
+##
+## The formula method must be a pure rearrangement of its inputs: every
+## statistic it produces has to be bit-identical to the one the default method
+## gives on the same data, split by hand. Anything less means the two
+## documented interfaces disagree.
+
+set.seed(20261012)
+nA <- 220L; nB <- 260L
+tA <- rexp(nA, 1 / 10)
+tB <- c(rexp(nB - 60L, 1 / 10), rexp(60L, 1 / 2))   # excess hazard in B
+eA <- rbinom(nA, 1, 0.85)
+eB <- rbinom(nB, 1, 0.85)
+
+trial <- data.frame(
+  time = c(tA, tB),
+  status = c(eA, eB),
+  arm = factor(rep(c("ctrl", "trt"), c(nA, nB)), levels = c("ctrl", "trt"))
+)
+
+## A structural stand-in for survival::Surv(type = "right"), so the Surv code
+## path is exercised even where 'survival' is not installed. The real package
+## is used as well, further down, whenever it is available.
+as_surv <- function(time, status) {
+  structure(cbind(time = as.numeric(time), status = as.numeric(status)),
+            type = "right", class = "Surv")
+}
+
+## ------------------------------------------- the four tests, exactly equal
+
+for (nm in c("higher_criticism_test", "berk_jones_test",
+             "fisher_combination_test", "min_p_test")) {
+  f <- get(nm)
+  v <- f(tA, tB, eA, eB, n_intervals_to_pool = 60,
+         n_permutations = 200, seed = 7)
+  m <- f(cbind(time, status) ~ arm, data = trial, n_intervals_to_pool = 60,
+         n_permutations = 200, seed = 7)
+  s <- f(as_surv(time, status) ~ arm, data = trial, n_intervals_to_pool = 60,
+         n_permutations = 200, seed = 7)
+  ok(paste(nm, "statistic identical through the formula interface"),
+     identical(unname(v$statistic), unname(m$statistic)))
+  ok(paste(nm, "permutation p-value identical through the formula interface"),
+     identical(v$p.value, m$p.value))
+  ok(paste(nm, "Surv() and cbind() left-hand sides agree"),
+     identical(unname(m$statistic), unname(s$statistic)) &&
+       identical(m$p.value, s$p.value))
+  ok(paste(nm, "records the group levels in order (A, B)"),
+     identical(m$group_levels, c("ctrl", "trt")))
+  ok(paste(nm, "relabels data.name with the formula"),
+     grepl("by arm", m$data.name, fixed = TRUE))
+}
+
+## every hc_version, every direction
+for (v in c("dj2008", "dj2004", "beta", "star")) {
+  for (alt in c("both", "greater", "less")) {
+    sv <- higher_criticism_test(tA, tB, eA, eB, alternative = alt,
+                                hc_version = v, n_intervals_to_pool = 60)
+    sf <- higher_criticism_test(cbind(time, status) ~ arm, data = trial,
+                                alternative = alt, hc_version = v,
+                                n_intervals_to_pool = 60)
+    ok(paste0("identical for hc_version=", v, ", alternative=", alt),
+       identical(unname(sv$statistic), unname(sf$statistic)))
+  }
+}
+
+## unpooled, and with the t_0 restriction
+ok("identical without pooling",
+   identical(unname(higher_criticism_test(tA, tB, eA, eB)$statistic),
+             unname(higher_criticism_test(cbind(time, status) ~ arm,
+                                          data = trial)$statistic)))
+ok("identical under the t_0 restriction",
+   identical(unname(higher_criticism_test(tA, tB, eA, eB, t_0 = 12,
+                                          n_intervals_to_pool = 40)$statistic),
+             unname(higher_criticism_test(cbind(time, status) ~ arm,
+                                          data = trial, t_0 = 12,
+                                          n_intervals_to_pool = 40)$statistic)))
+
+## ------------------------------------------------ per-interval and tables
+
+ok("event_pvalues identical through the formula interface",
+   identical(event_pvalues(tA, tB, eA, eB, alternative = "greater",
+                           n_intervals_to_pool = 60),
+             event_pvalues(cbind(time, status) ~ arm, data = trial,
+                           alternative = "greater", n_intervals_to_pool = 60)))
+ok("event_pvalues identical with alternative='both'",
+   identical(event_pvalues(tA, tB, eA, eB, n_intervals_to_pool = 60),
+             event_pvalues(cbind(time, status) ~ arm, data = trial,
+                           n_intervals_to_pool = 60)))
+ok("suspected_deviations identical through the formula interface",
+   identical(suspected_deviations(tA, tB, eA, eB, n_intervals_to_pool = 60),
+             suspected_deviations(cbind(time, status) ~ arm, data = trial,
+                                  n_intervals_to_pool = 60)))
+ok("suspected_deviations identical with alternative='both'",
+   identical(suspected_deviations(tA, tB, eA, eB, alternative = "both",
+                                  n_intervals_to_pool = 60),
+             suspected_deviations(cbind(time, status) ~ arm, data = trial,
+                                  alternative = "both",
+                                  n_intervals_to_pool = 60)))
+
+## the plot method returns the same table it would from vectors
+pdf(file = tempfile(fileext = ".pdf"))
+pv_v <- plot_pvalue_profile(tA, tB, eA, eB, n_intervals_to_pool = 60)
+pv_f <- plot_pvalue_profile(cbind(time, status) ~ arm, data = trial,
+                            n_intervals_to_pool = 60)
+dev.off()
+ok("plot_pvalue_profile returns the same table from either interface",
+   identical(pv_v, pv_f))
+
+## -------------------------------------------------- group order semantics
+
+g <- higher_criticism_test(cbind(time, status) ~ arm, data = trial,
+                           alternative = "greater", n_intervals_to_pool = 60)
+trial_rev <- trial
+trial_rev$arm <- factor(trial$arm, levels = c("trt", "ctrl"))
+l_rev <- higher_criticism_test(cbind(time, status) ~ arm, data = trial_rev,
+                               alternative = "less", n_intervals_to_pool = 60)
+ok("the first level is group A: reversing the levels swaps greater and less",
+   identical(unname(g$statistic), unname(l_rev$statistic)))
+ok("reversed levels are reported in the new order",
+   identical(l_rev$group_levels, c("trt", "ctrl")))
+ok("the planted excess hazard in the second level is found by 'greater'",
+   unname(g$statistic) >
+     unname(higher_criticism_test(cbind(time, status) ~ arm, data = trial,
+                                  alternative = "less",
+                                  n_intervals_to_pool = 60)$statistic))
+
+## unordered group variables level by sort(unique(.))
+trial_chr <- trial; trial_chr$arm <- as.character(trial$arm)
+trial_num <- trial; trial_num$arm <- rep(c(0, 1), c(nA, nB))
+trial_lgl <- trial; trial_lgl$arm <- rep(c(FALSE, TRUE), c(nA, nB))
+base_stat <- unname(g$statistic)
+for (d in list(character = trial_chr, numeric = trial_num, logical = trial_lgl)) {
+  ok("grouping by a non-factor gives the same split",
+     identical(base_stat,
+               unname(higher_criticism_test(cbind(time, status) ~ arm, data = d,
+                                            alternative = "greater",
+                                            n_intervals_to_pool = 60)$statistic)))
+}
+
+## numeric levels sort numerically, not alphabetically
+trial_num2 <- trial; trial_num2$arm <- rep(c(2, 10), c(nA, nB))
+ok("numeric group levels sort numerically",
+   identical(base_stat,
+             unname(higher_criticism_test(cbind(time, status) ~ arm,
+                                          data = trial_num2,
+                                          alternative = "greater",
+                                          n_intervals_to_pool = 60)$statistic)))
+
+## ------------------------------------------------- a bare numeric response
+
+ok("'time ~ group' treats every observation as an event",
+   identical(unname(higher_criticism_test(tA, tB,
+                                          n_intervals_to_pool = 60)$statistic),
+             unname(higher_criticism_test(time ~ arm, data = trial,
+                                          n_intervals_to_pool = 60)$statistic)))
+
+## --------------------------------------------------- subset and na.action
+
+keepA <- tA <= 15; keepB <- tB <= 15
+ok("subset= matches the hand-made subset",
+   identical(unname(higher_criticism_test(tA[keepA], tB[keepB],
+                                          eA[keepA], eB[keepB],
+                                          n_intervals_to_pool = 40)$statistic),
+             unname(higher_criticism_test(cbind(time, status) ~ arm,
+                                          data = trial, subset = time <= 15,
+                                          n_intervals_to_pool = 40)$statistic)))
+
+## na.action is the one documented difference between the interfaces: the
+## formula method drops incomplete rows, the default method refuses them
+trial_na <- trial
+trial_na$time[5L] <- NA            # an observation in group A
+trial_na$status[nA + 180L] <- NA   # an observation in group B
+dropA <- seq_len(nA) != 5L
+dropB <- seq_len(nB) != 180L
+ok("na.omit drops exactly the incomplete rows",
+   identical(unname(higher_criticism_test(tA[dropA], tB[dropB],
+                                          eA[dropA], eB[dropB],
+                                          n_intervals_to_pool = 40)$statistic),
+             unname(higher_criticism_test(cbind(time, status) ~ arm,
+                                          data = trial_na,
+                                          n_intervals_to_pool = 40)$statistic)))
+ok("na.fail still refuses incomplete rows",
+   inherits(try(higher_criticism_test(cbind(time, status) ~ arm,
+                                      data = trial_na,
+                                      na.action = na.fail), silent = TRUE),
+            "try-error"))
+ok("the default method still rejects NA durations",
+   inherits(try(higher_criticism_test(c(NA, tA[-1]), tB), silent = TRUE),
+            "try-error"))
+
+## -------------------------------------------------------------- misuse
+
+ok("rejects a one-sided formula",
+   inherits(try(higher_criticism_test(~arm, data = trial), silent = TRUE),
+            "try-error"))
+ok("rejects two grouping variables",
+   inherits(try(higher_criticism_test(cbind(time, status) ~ arm + status,
+                                      data = trial), silent = TRUE),
+            "try-error"))
+ok("rejects a grouping variable with three levels",
+   inherits(try(higher_criticism_test(
+     cbind(time, status) ~ g3,
+     data = transform(trial, g3 = rep(c("a", "b", "c"), length.out = nA + nB))),
+     silent = TRUE), "try-error"))
+ok("rejects a grouping variable with one level",
+   inherits(try(higher_criticism_test(cbind(time, status) ~ g1,
+                                      data = transform(trial, g1 = "only")),
+                silent = TRUE), "try-error"))
+ok("rejects event_observed_A alongside a formula",
+   inherits(try(higher_criticism_test(cbind(time, status) ~ arm, data = trial,
+                                      event_observed_A = eA), silent = TRUE),
+            "try-error"))
+ok("rejects a three-column matrix response",
+   inherits(try(higher_criticism_test(cbind(time, status, status) ~ arm,
+                                      data = trial), silent = TRUE),
+            "try-error"))
+ok("rejects a Surv object that is not right-censored",
+   inherits(try(higher_criticism_test(
+     structure(cbind(1, 2, trial$status), type = "counting",
+               class = "Surv") ~ arm, data = trial), silent = TRUE),
+     "try-error"))
+ok("rejects a Surv object passed as durations_A",
+   inherits(try(higher_criticism_test(as_surv(tA, eA), tB), silent = TRUE),
+            "try-error"))
+ok("rejects a matrix passed as durations_A",
+   inherits(try(higher_criticism_test(cbind(tA, tA), tB), silent = TRUE),
+            "try-error"))
+ok("rejects a misspelled argument instead of ignoring it",
+   inherits(try(higher_criticism_test(tA, tB, n_intervals_pooled = 40),
+                silent = TRUE), "try-error"))
+ok("partial matching still reaches n_intervals_to_pool",
+   identical(unname(higher_criticism_test(tA, tB, n_intervals = 40)$statistic),
+             unname(higher_criticism_test(tA, tB,
+                                          n_intervals_to_pool = 40)$statistic)))
+
+## ------------------------------------------------- against real survival::Surv
+
+if (requireNamespace("survival", quietly = TRUE)) {
+  sv <- higher_criticism_test(survival::Surv(time, status) ~ arm, data = trial,
+                              n_intervals_to_pool = 60, n_permutations = 200,
+                              seed = 7)
+  ok("survival::Surv agrees with the default method",
+     identical(unname(sv$statistic),
+               unname(higher_criticism_test(tA, tB, eA, eB,
+                                            n_intervals_to_pool = 60,
+                                            n_permutations = 200,
+                                            seed = 7)$statistic)))
+  ok("survival::Surv agrees with the cbind() form",
+     identical(unname(sv$statistic),
+               unname(higher_criticism_test(cbind(time, status) ~ arm,
+                                            data = trial,
+                                            n_intervals_to_pool = 60,
+                                            n_permutations = 200,
+                                            seed = 7)$statistic)))
+
+  ## survival normalises 1/2 status coding to 0/1
+  trial12 <- trial; trial12$status12 <- trial$status + 1
+  ok("survival::Surv normalises 1/2 status coding",
+     identical(unname(sv$statistic),
+               unname(higher_criticism_test(
+                 survival::Surv(time, status12) ~ arm, data = trial12,
+                 n_intervals_to_pool = 60, n_permutations = 200,
+                 seed = 7)$statistic)))
+
+  ## na.omit must survive [.Surv
+  ok("survival::Surv drops incomplete rows like the cbind() form",
+     identical(unname(higher_criticism_test(survival::Surv(time, status) ~ arm,
+                                            data = trial_na,
+                                            n_intervals_to_pool = 40)$statistic),
+               unname(higher_criticism_test(cbind(time, status) ~ arm,
+                                            data = trial_na,
+                                            n_intervals_to_pool = 40)$statistic)))
+
+  ok("rejects counting-process Surv objects",
+     inherits(try(higher_criticism_test(
+       survival::Surv(rep(0, nA + nB), time, status) ~ arm, data = trial),
+       silent = TRUE), "try-error"))
+} else {
+  cat("SKIP: 'survival' not installed; Surv() checked against a",
+      "structural stand-in only\n")
+}
+
 cat("\nAll tests passed.\n")

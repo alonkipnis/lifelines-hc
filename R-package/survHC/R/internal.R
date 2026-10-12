@@ -9,6 +9,18 @@
 ## Validate and coerce inputs; apply the time restriction t_0.
 .prepare_inputs <- function(durations_A, durations_B,
                             event_observed_A, event_observed_B, t_0) {
+  ## as.numeric() would silently flatten a Surv object or a matrix into a
+  ## vector twice the intended length, so catch those before coercing.
+  if (inherits(durations_A, "Surv") || inherits(durations_B, "Surv")) {
+    stop("a Surv() object belongs on the left-hand side of a formula, as in ",
+         "higher_criticism_test(Surv(time, status) ~ group, data = trial)",
+         call. = FALSE)
+  }
+  if (is.matrix(durations_A) || is.matrix(durations_B)) {
+    stop("'durations_A' and 'durations_B' must be numeric vectors",
+         call. = FALSE)
+  }
+
   durations_A <- as.numeric(durations_A)
   durations_B <- as.numeric(durations_B)
 
