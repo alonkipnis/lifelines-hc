@@ -3,7 +3,7 @@ Type: Package
 Title: Higher Criticism Tests for Non-Proportional Hazard Deviations
 Version: 0.1.0
 Authors@R: c(
-    person("Alon", "Kipnis", email = "alon.kipnis@runi.ac.il",
+    person("Alon", "Kipnis", email = "alonkipnis@gmail.com",
            role = c("aut", "cre")),
     person("Ben", "Galili", role = "aut"),
     person("Zohar", "Yakhini", role = "aut"))
